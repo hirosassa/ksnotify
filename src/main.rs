@@ -1,7 +1,8 @@
-use gitlab::api::{
-    self, projects::merge_requests::discussions::CreateMergeRequestDiscussion, Query,
-};
+use gitlab::api::{self, projects::merge_requests::notes::CreateMergeRequestNote, Query};
 use gitlab::Gitlab;
+use handlebars::Handlebars;
+use serde::Serialize;
+use serde_json;
 use std::env;
 use std::fs::File;
 use std::io::{self, Read};
@@ -53,18 +54,17 @@ struct Notifier {
 }
 
 impl Notifier {
-    fn new(ci: CI, path: &str) -> Notifier {
+    fn new(ci: CI, path: &str) -> Self {
         let config = Config::new(path);
-        println!("confing: {:?}", config);
-        Notifier {
+        Self {
             client: Client {
                 client: Gitlab::new(
-                    Config::new(path).gitlab_config.base_url,
-                    Config::new(path).gitlab_config.token,
+                    config.gitlab_config.base_url.to_owned(),
+                    config.gitlab_config.token.to_owned(),
                 )
                 .unwrap(),
             },
-            config: Config::new(path),
+            config: config,
             ci: ci,
         }
     }
@@ -73,15 +73,21 @@ impl Notifier {
 trait Notifiable {
     fn notify(&self, body: String);
 }
+
 impl Notifiable for Notifier {
     fn notify(&self, body: String) {
-        let discussion = CreateMergeRequestDiscussion::builder()
-            .project(self.config.gitlab_config.repository.project.as_ref())
+        let project = format!(
+            "{}/{}",
+            self.config.gitlab_config.repository.owner,
+            self.config.gitlab_config.repository.project
+        );
+        let note = CreateMergeRequestNote::builder()
+            .project(project)
             .merge_request(self.ci.merge_request.number)
             .body(body)
             .build()
             .unwrap();
-        let _ = api::ignore(discussion).query(&self.client.client).unwrap();
+        let _ = api::ignore(note).query(&self.client.client).unwrap();
     }
 }
 
@@ -123,13 +129,51 @@ impl Config {
     }
 }
 
+#[derive(Serialize)]
+struct Template {
+    title: String,
+    result: String,
+    body: String,
+    link: String,
+}
+
+impl Template {
+    const DEFAULT_BUILD_TITLE: &'static str = "## Build result";
+
+    const DEFAULT_BUILD_TEMPLATE: &'static str = "
+{{ title }} <sup>[CI link]( {{ link }} )</sup>
+<details><summary>Details (Click me)</summary>
+<pre><code> {{ body }}
+</pre></code></details>
+";
+
+    fn new(body: String) -> Self {
+        Self {
+            title: Template::DEFAULT_BUILD_TITLE.to_string(),
+            result: "".to_string(),
+            body: body,
+            link: "".to_string(),
+        }
+    }
+
+    fn render(&self) -> String {
+        let reg = Handlebars::new();
+        let j = serde_json::to_value(self).unwrap();
+        reg.render_template(Template::DEFAULT_BUILD_TEMPLATE, &j)
+            .unwrap()
+    }
+}
+
 fn main() {
     let ci = CI::new();
-    let notifier = Notifier::new(ci, "./ksnotify.yaml");
+    let notifier = Notifier::new(ci, "ksnotify.yaml");
 
     let mut body = String::new();
-    io::stdin().read_line(&mut body).expect("failed to read");
-    println!("{}", body);
+    io::stdin()
+        .read_to_string(&mut body)
+        .expect("failed to read stdin");
 
-    notifier.notify(body);
+    let template = Template::new(body);
+
+    notifier.notify(template.render());
 }
