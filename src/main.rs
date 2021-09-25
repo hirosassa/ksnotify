@@ -1,52 +1,28 @@
+mod ci;
 mod notifier;
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use handlebars::Handlebars;
 use notifier::Notifiable;
 use serde::Serialize;
 use std::fs::File;
 use std::io::{self, Read};
+use std::process;
 use std::str::FromStr;
-use std::{env, process};
-use strum_macros::EnumString;
+use std::string::ToString;
+use strum::IntoEnumIterator;
+use strum_macros::{Display, EnumIter};
 use yaml_rust::{Yaml, YamlLoader};
 
-#[derive(Debug, PartialEq, Clone, Copy, EnumString)]
-pub enum CIKind {
+#[derive(Debug, PartialEq, Clone, Copy, Display, EnumIter)]
+pub enum NotifierKind {
     #[strum(serialize = "gitlab")]
     GitLab,
 }
 
 #[derive(Debug)]
-struct MergeRequest {
-    number: u64,
-    revision: String,
-}
-
-#[derive(Debug)]
-pub struct CI {
-    url: String,
-    merge_request: MergeRequest,
-}
-
-impl CI {
-    fn new(ci: CIKind) -> Result<Self> {
-        match ci {
-            CIKind::GitLab => {
-                // todo: make this as function
-                let url = env::var("CI_JOB_URL")?;
-                let number = env::var("CI_MERGE_REQUEST_IID")?.parse()?;
-                let revision = env::var("CI_COMMIT_SHA")?;
-                let merge_request = MergeRequest { number, revision };
-                Ok(Self { url, merge_request })
-            }
-        }
-    }
-}
-
-#[derive(Debug)]
 struct Config {
-    ci: CIKind,
+    ci: ci::CIKind,
     notifier: Yaml,
 }
 
@@ -56,12 +32,24 @@ impl Config {
         let mut config_string = String::new();
         f.read_to_string(&mut config_string)?;
         let doc = &YamlLoader::load_from_str(&config_string)?[0];
-        let ci_kind = CIKind::from_str(doc["ci"].as_str().expect("failed to load the CI type"))?;
+        let ci_kind =
+            ci::CIKind::from_str(doc["ci"].as_str().expect("failed to load the CI type"))?;
 
         Ok(Self {
             ci: ci_kind,
             notifier: doc["notifier"].clone(),
         })
+    }
+
+    fn select_notifier(&self) -> Result<NotifierKind> {
+        if let Some(hash) = self.notifier.as_hash() {
+            for kind in NotifierKind::iter() {
+                if hash.contains_key(&Yaml::String(kind.to_string())) {
+                    return Ok(kind);
+                }
+            }
+        }
+        Err(anyhow!("invalid notifier type"))
     }
 }
 
@@ -83,12 +71,12 @@ impl Template {
 </pre></code></details>
 ";
 
-    fn new(body: String) -> Self {
+    fn new(body: String, ci: ci::CI) -> Self {
         Self {
             title: Template::DEFAULT_BUILD_TITLE.to_string(),
             result: "".to_string(),
             body,
-            link: "".to_string(),
+            link: ci.url().to_string(),
         }
     }
 
@@ -113,16 +101,17 @@ fn main() {
 
 fn run() -> Result<()> {
     let config = Config::new("ksnotify.yaml")?;
-    let ci = CI::new(config.ci)?;
+    let ci = ci::CI::new(config.ci)?;
 
-    let notifier = match config.ci {
-        CIKind::GitLab => notifier::gitlab::GitlabNotifier::new(ci, config.notifier),
+    let notifier_kind = config.select_notifier()?;
+    let notifier = match notifier_kind {
+        NotifierKind::GitLab => notifier::gitlab::GitlabNotifier::new(ci.clone(), config.notifier),
     }?;
 
     let mut body = String::new();
     io::stdin().read_to_string(&mut body)?;
 
-    let template = Template::new(body);
+    let template = Template::new(body, ci);
 
     notifier.notify(template.render()?)?;
     Ok(())
