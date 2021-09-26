@@ -18,6 +18,8 @@ use yaml_rust::{Yaml, YamlLoader};
 pub enum NotifierKind {
     #[strum(serialize = "gitlab")]
     GitLab,
+    #[strum(serialize = "slack")]
+    Slack,
 }
 
 #[derive(Debug)]
@@ -105,8 +107,9 @@ fn run() -> Result<()> {
 
     let notifier_kind = config.select_notifier()?;
     let notifier = match notifier_kind {
-        NotifierKind::GitLab => notifier::gitlab::GitlabNotifier::new(ci.clone(), config.notifier),
-    }?;
+        NotifierKind::GitLab => Box::new(notifier::gitlab::GitlabNotifier::new(ci.clone(), config.notifier)?) as Box<dyn Notifiable>,
+        NotifierKind::Slack => Box::new(notifier::slack::SlackNotifier::new(config.notifier)?) as Box<dyn Notifiable>,
+    };
 
     let mut body = String::new();
     io::stdin().read_to_string(&mut body)?;

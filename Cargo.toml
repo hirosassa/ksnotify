@@ -14,3 +14,5 @@ anyhow = "1.0.43"
 strum = "0.21"
 strum_macros = "0.21"
 thiserror = "1.0"
+slack_api = { version = "0.23.1", features = ["sync", "reqwest_blocking"]}
+reqwest = "0.11.4"
