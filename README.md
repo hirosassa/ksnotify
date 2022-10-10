@@ -1,5 +1,9 @@
 # ksnotify
 
+[![build](https://github.com/hirosassa/ksnotify/actions/workflows/test.yaml/badge.svg)](https://github.com/hirosassa/ksnotify/actions/workflows/test.yaml)
+[![codecov]()](https://codecov.io/gh/hirosassa/ksnotify)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/hirosassa/ksnotify/blob/main/LICENSE)
+
 A CLI command to parse `kubectl diff` result and notify it to GitLab
 
 ## Caution
