@@ -1,6 +1,7 @@
 use anyhow::Result;
 use regex::Regex;
 use std::collections::HashMap;
+use std::env;
 
 pub trait Parsable {
     fn parse(&self, body: &str) -> Result<ParseResult>;
@@ -13,13 +14,25 @@ pub struct ParseResult {
 pub struct DiffParser {
     kind: Regex,
     header: Regex,
+    diff: Regex,
+    skaffold: Regex,
+    suppress_skaffold: bool,
 }
 
 impl DiffParser {
     pub fn new() -> Result<Self> {
         let kind = Regex::new(r"(?m)^diff -uN\s.*/(?P<kind>[^/\s]+)\s.*/([^/\s]+)$")?; // matches line like "diff -uN /var/folders/fl/blahblah/[apiVersion].[kind].[namespace].[name]  /var/folders/fl/blahblah/[apiVersion].[kind].[namespace].[name]"
         let header = Regex::new(r"(?m)^.*/var/folders/.*$")?; // matches diff header that contains "/var/folders/fl/blahblah/"
-        Ok(Self { kind, header })
+        let diff = Regex::new(r"(?m)^[\-\+].*$")?;
+        let skaffold = Regex::new(r"(?m)^(.*labels:.*\r?\n?)?.*skaffold.dev/run-id.*\r?\n?")?;
+        let suppress_skaffold = matches!(env::var("KSNOTIFY_SUPPRESS_SKAFFOLD"), Ok(_));
+        Ok(Self {
+            kind,
+            header,
+            diff,
+            skaffold,
+            suppress_skaffold,
+        })
     }
 
     fn parse_kinds(&self, diff: &str) -> Vec<String> {
@@ -36,17 +49,38 @@ impl DiffParser {
             .map(|x| x.trim().to_string())
             .collect()
     }
+
+    fn suppress_skaffold_labels(&self, result: HashMap<String, String>) -> HashMap<String, String> {
+        result
+            .iter()
+            .map(|(kind, diff)| (kind, self.remove_skaffold_labels(diff)))
+            .filter(|(_kind, diff)| self.is_there_any_diff(diff))
+            .map(|(kind, diff)| (kind.to_string(), diff))
+            .collect()
+    }
+
+    fn remove_skaffold_labels(&self, diff: &str) -> String {
+        self.skaffold.replace_all(diff, "").to_string()
+    }
+
+    fn is_there_any_diff(&self, body: &str) -> bool {
+        self.diff.is_match(body)
+    }
 }
 
 impl Parsable for DiffParser {
     fn parse(&self, diff: &str) -> Result<ParseResult> {
         let kinds = self.parse_kinds(diff);
         let chunked_diff = self.parse_diff(diff);
-        let result: HashMap<_, _> = kinds
+        let mut result: HashMap<_, _> = kinds
             .iter()
             .zip(chunked_diff.iter())
             .map(|(k, v)| (k.to_string(), v.to_string()))
             .collect();
+
+        if self.suppress_skaffold {
+            result = self.suppress_skaffold_labels(result);
+        }
 
         Ok(ParseResult {
             kind_result: result,
@@ -116,5 +150,136 @@ diff -uN /var/folders/fl/blahblah/v1.Service.test.test-app2 /var/folders/fl/blah
         let actual = parser.parse_diff(&diff);
         let expected = vec!["ABCDE\nFGHIJ", "12345\n67890"];
         assert_eq!(&actual[..], &expected[..]);
+    }
+
+    #[test]
+    fn test_is_there_any_diff_detect_existence_of_diff() {
+        let diff = "abc
+def
+- hij
++ klm";
+        let parser = self::DiffParser::new().unwrap();
+        let actual = parser.is_there_any_diff(&diff);
+        assert!(actual);
+    }
+
+    #[test]
+    fn test_is_there_any_diff_detect_non_existence_of_diff() {
+        let diff = "abc
+def
+hij";
+        let parser = self::DiffParser::new().unwrap();
+        let actual = parser.is_there_any_diff(&diff);
+        assert!(!actual);
+    }
+
+    #[test]
+    fn test_remove_skaffold_labels_removes_skaffold_labels() {
+        let diff = "
+ @@ -5,7 +5,6 @@
+     deployment.kubernetes.io/revision: 1
+   labels:
+     app: test-app
+-    skaffold.dev/run-id: 123
+   name: test-app
+   namespace: test
+";
+        let parser = self::DiffParser::new().unwrap();
+        let actual = parser.remove_skaffold_labels(diff);
+        let expected = "
+ @@ -5,7 +5,6 @@
+     deployment.kubernetes.io/revision: 1
+   labels:
+     app: test-app
+   name: test-app
+   namespace: test
+";
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_remove_skaffold_labels_do_nothing() {
+        let diff = "
+ @@ -5,7 +5,6 @@
+     deployment.kubernetes.io/revision: 1
+   labels:
+     app: test-app
+   name: test-app
+   namespace: test
+";
+        let parser = self::DiffParser::new().unwrap();
+        let actual = parser.remove_skaffold_labels(diff);
+        let expected = "
+ @@ -5,7 +5,6 @@
+     deployment.kubernetes.io/revision: 1
+   labels:
+     app: test-app
+   name: test-app
+   namespace: test
+";
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_remove_skaffold_labels_removes_labels_key_and_value() {
+        let diff = "
+ @@ -1,8 +1,6 @@
+ apiVersion: batch/v1beta1
+ kind: CronJob
+ metadata:
+-  labels:
+-    skaffold.dev/run-id: 123
+   name: test-app
+   namespace: test
+ spec:
+";
+        let parser = self::DiffParser::new().unwrap();
+        let actual = parser.remove_skaffold_labels(diff);
+        let expected = "
+ @@ -1,8 +1,6 @@
+ apiVersion: batch/v1beta1
+ kind: CronJob
+ metadata:
+   name: test-app
+   namespace: test
+ spec:
+";
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_remove_skaffold_labels_removes_skaffold_labels_with_and_without_label_key() {
+        let diff = "
+ @@ -1,8 +1,6 @@
+ metadata:
+   labels:
+     app: test-app
+-    skaffold.dev/run-id: 1234
+   name: test-app
+   namespace: test
+ spec:
+@@ -18,8 +16,6 @@
+           creationTimestamp: null
+-          labels:
+-            skaffold.dev/run-id: 123
+         spec:
+           containers:
+";
+        let parser = self::DiffParser::new().unwrap();
+        let actual = parser.remove_skaffold_labels(diff);
+        let expected = "
+ @@ -1,8 +1,6 @@
+ metadata:
+   labels:
+     app: test-app
+   name: test-app
+   namespace: test
+ spec:
+@@ -18,8 +16,6 @@
+           creationTimestamp: null
+         spec:
+           containers:
+";
+        assert_eq!(actual, expected);
     }
 }
