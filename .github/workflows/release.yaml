@@ -1,0 +1,56 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - '*'
+
+jobs:
+  build:
+    name: Release binary
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            artifact_name: bqvalid
+            asset_name: bqvalid-x86_64-unknown-linux-gnu
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+            artifact_name: bqvalid
+            asset_name: bqvalid-x86_64-unknown-linux-musl
+          - os: ubuntu-latest
+            target: x86_64-pc-windows-gnu
+            artifact_name: bqvalid.exe
+            asset_name: bqvalid-x86_64-pc-windows-gnu.exe
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            artifact_name: bqvalid
+            asset_name: bqvalid-x86_64-apple-darwin
+
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Install stable toolchain
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Install cross
+        uses: taiki-e/install-action@cross
+
+      - name: Cross build with all features
+      - run: cargo build --release --target ${{ matrix.target }} --all-features --verbose
+
+      - name: Upload binaries to release
+        uses: svenstaro/upload-release-action@2.3.0
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: target/${{ matrix.target }}/release/${{ matrix.artifact_name }}
+          asset_name: ${{ matrix.asset_name }}
+          tag: ${{ github.ref }}
+          overwrite: true
