@@ -75,8 +75,7 @@ diff -uN /var/folders/fl/blahblah/v1.Service.test.test-app2 /var/folders/fl/blah
         //assert_eq!(actual.kind_result.len(), 2);
 
         let keys = vec!["v1.Service.test.test-app1", "v1.Service.test.test-app2"];
-        let values = vec!["ABCDE\nFGHIJ",
-                          "12345\n67890"];
+        let values = vec!["ABCDE\nFGHIJ", "12345\n67890"];
         for (k, v) in keys.iter().zip(values) {
             assert_eq!(actual.kind_result[&k.to_string()], v.to_string())
         }

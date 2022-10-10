@@ -1,3 +1,5 @@
+#![allow(clippy::use_self)]
+
 mod ci;
 mod notifier;
 mod parser;
@@ -15,7 +17,7 @@ use strum::IntoEnumIterator;
 use strum_macros::{Display, EnumIter};
 use yaml_rust::{Yaml, YamlLoader};
 
-#[derive(Debug, PartialEq, Clone, Copy, Display, EnumIter)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Display, EnumIter)]
 enum NotifierKind {
     #[strum(serialize = "gitlab")]
     GitLab,

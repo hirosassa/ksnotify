@@ -2,7 +2,7 @@ use anyhow::Result;
 use std::env;
 use strum_macros::EnumString;
 
-#[derive(Debug, PartialEq, Clone, Copy, EnumString)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, EnumString)]
 pub enum CIKind {
     #[strum(serialize = "gitlabci")]
     GitLab,
@@ -21,8 +21,7 @@ impl CI {
                 // todo: make this as function
                 let url = env::var("CI_JOB_URL")?;
                 let number = env::var("CI_MERGE_REQUEST_IID")?.parse()?;
-                let revision = env::var("CI_COMMIT_SHA")?;
-                let merge_request = MergeRequest { number, revision };
+                let merge_request = MergeRequest { number };
                 Ok(Self { url, merge_request })
             }
         }
@@ -40,7 +39,6 @@ impl CI {
 #[derive(Clone, Debug)]
 pub struct MergeRequest {
     number: u64,
-    revision: String,
 }
 
 impl MergeRequest {
