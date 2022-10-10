@@ -26,12 +26,10 @@ impl GitlabNotifier {
         let client = Gitlab::new(
             gitlab_config["base_url"]
                 .as_str()
-                .expect("failed to load base_url of GitLab config")
-                .to_string(),
+                .expect("failed to load base_url of GitLab config"),
             gitlab_config["token"]
                 .as_str()
-                .expect("failed to load token of GitLab config")
-                .to_string(),
+                .expect("failed to load token of GitLab config"),
         )?;
         let repository = Repository {
             owner: gitlab_config["repository"]["owner"]
