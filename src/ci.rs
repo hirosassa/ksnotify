@@ -8,7 +8,7 @@ pub enum CIKind {
     GitLab,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug)]
 pub struct CI {
     url: String,
     merge_request: MergeRequest,
@@ -28,23 +28,23 @@ impl CI {
         }
     }
 
-    pub fn url(&self) -> &String {
+    pub const fn url(&self) -> &String {
         &self.url
     }
 
-    pub fn merge_request(&self) -> &MergeRequest {
+    pub const fn merge_request(&self) -> &MergeRequest {
         &self.merge_request
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug)]
 pub struct MergeRequest {
     number: u64,
     revision: String,
 }
 
 impl MergeRequest {
-    pub fn number(&self) -> &u64 {
+    pub const fn number(&self) -> &u64 {
         &self.number
     }
 }

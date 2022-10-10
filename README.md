@@ -1,6 +1,6 @@
 # ksnotify
 
-A CLI command to parse kustomize build result and notify it to GitLab
+A CLI command to parse `kubectl diff` result and notify it to GitLab
 
 ## Caution
 
@@ -8,12 +8,11 @@ This repository is under development status.
 
 ## What ksnotify does
 
-1. Parse the execution result of `Kustomize`
-2. Bind parsed results to handlebars templates
-3. Notify it to GitLab as you like
+1. Parse the execution result of `kubectl diff`
+1. Notify it to GitLab
 
 ## Usage
 
 ```console
-kustomize build | ksnotify
+kustomize build dev | kubectl diff -f - 2> /dev/null | | ksnotify
 ```

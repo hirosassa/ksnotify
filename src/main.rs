@@ -1,10 +1,11 @@
 mod ci;
 mod notifier;
+mod parser;
+mod template;
 
 use anyhow::{anyhow, Result};
-use handlebars::Handlebars;
 use notifier::Notifiable;
-use serde::Serialize;
+use parser::Parsable;
 use std::fs::File;
 use std::io::{self, Read};
 use std::process;
@@ -15,9 +16,11 @@ use strum_macros::{Display, EnumIter};
 use yaml_rust::{Yaml, YamlLoader};
 
 #[derive(Debug, PartialEq, Clone, Copy, Display, EnumIter)]
-pub enum NotifierKind {
+enum NotifierKind {
     #[strum(serialize = "gitlab")]
     GitLab,
+    #[strum(serialize = "slack")]
+    Slack,
 }
 
 #[derive(Debug)]
@@ -53,40 +56,6 @@ impl Config {
     }
 }
 
-#[derive(Serialize)]
-struct Template {
-    title: String,
-    result: String,
-    body: String,
-    link: String,
-}
-
-impl Template {
-    const DEFAULT_BUILD_TITLE: &'static str = "## Build result";
-
-    const DEFAULT_BUILD_TEMPLATE: &'static str = "
-{{ title }} <sup>[CI link]( {{ link }} )</sup>
-<details><summary>Details (Click me)</summary>
-<pre><code> {{ body }}
-</pre></code></details>
-";
-
-    fn new(body: String, ci: ci::CI) -> Self {
-        Self {
-            title: Template::DEFAULT_BUILD_TITLE.to_string(),
-            result: "".to_string(),
-            body,
-            link: ci.url().to_string(),
-        }
-    }
-
-    fn render(&self) -> Result<String> {
-        let reg = Handlebars::new();
-        let j = serde_json::to_value(self).unwrap();
-        Ok(reg.render_template(Template::DEFAULT_BUILD_TEMPLATE, &j)?)
-    }
-}
-
 fn main() {
     let result = run();
 
@@ -106,12 +75,14 @@ fn run() -> Result<()> {
     let notifier_kind = config.select_notifier()?;
     let notifier = match notifier_kind {
         NotifierKind::GitLab => notifier::gitlab::GitlabNotifier::new(ci.clone(), config.notifier),
+        NotifierKind::Slack => todo!(),
     }?;
 
     let mut body = String::new();
     io::stdin().read_to_string(&mut body)?;
-
-    let template = Template::new(body, ci);
+    let parser = parser::DiffParser::new()?;
+    let result = parser.parse(&body)?;
+    let template = template::Template::new(result.kind_result, ci.url().to_string());
 
     notifier.notify(template.render()?)?;
     Ok(())
