@@ -17,6 +17,14 @@ This repository is under development status.
 
 ## Usage
 
+Basic usage is as follows:
+
 ```console
 kustomize build dev | kubectl diff -f - 2> /dev/null | | ksnotify
+```
+
+To suppress `skaffold` labels like `skaffold.dev/run-id: 1234` automatically added by `skaffold`, you should declare
+
+```console
+export KSNOTIFY_SUPPRESS_SKAFFOLD=1
 ```
