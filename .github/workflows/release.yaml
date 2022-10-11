@@ -2,8 +2,9 @@ name: Release
 
 on:
   push:
-    tags:
-      - '*'
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
 jobs:
   build:
@@ -40,17 +41,22 @@ jobs:
         with:
           toolchain: stable
 
-      - name: Install cross
-        uses: taiki-e/install-action@cross
+      - name: Install dependencies
+        if: ${{ matrix.os == '' || startsWith(matrix.os, 'ubuntu') }}
+        run: sudo apt-get update && sudo apt-get install pkg-config libssl-dev
 
       - name: Cross build with all features
-        run: cargo build --release --target ${{ matrix.target }} --all-features --verbose
-
-      - name: Upload binaries to release
-        uses: svenstaro/upload-release-action@2.3.0
+        uses: actions-rs/cargo@v1
         with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: target/${{ matrix.target }}/release/${{ matrix.artifact_name }}
-          asset_name: ${{ matrix.asset_name }}
-          tag: ${{ github.ref }}
-          overwrite: true
+          use-cross: true
+          command: build
+          args: --release --target ${{ matrix.target }} --all-features --verbose
+
+      # - name: Upload binaries to release
+      #   uses: svenstaro/upload-release-action@2.3.0
+      #   with:
+      #     repo_token: ${{ secrets.GITHUB_TOKEN }}
+      #     file: target/${{ matrix.target }}/release/${{ matrix.artifact_name }}
+      #     asset_name: ${{ matrix.asset_name }}
+      #     tag: ${{ github.ref }}
+      #     overwrite: true
