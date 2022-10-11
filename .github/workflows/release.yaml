@@ -43,15 +43,10 @@ jobs:
 
       - name: Install dependencies
         if: ${{ matrix.os == '' || startsWith(matrix.os, 'ubuntu') }}
-        run: sudo apt-get update && sudo apt-get install pkg-config libssl-dev clang
+        run: sudo apt-get update && sudo apt-get install openssl
 
       - name: Cross build with all features
         uses: actions-rs/cargo@v1
-        env:
-          OPENSSL_DIR: /opt/openssl
-          OPENSSL_INCLUDE_DIR: /opt/openssl/include
-          OPENSSL_LIB_DIR: /opt/openssl/lib
-          TARGET_CC: clang
         with:
           use-cross: true
           command: build
