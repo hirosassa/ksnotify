@@ -40,12 +40,11 @@ jobs:
         with:
           toolchain: stable
 
+      - name: Install cross
+        uses: taiki-e/install-action@cross
+
       - name: Cross build with all features
-        uses: actions-rs/cargo@v1
-        with:
-          use-cross: true
-          command: build
-          args: --release --target ${{ matrix.target }} --all-features --verbose
+        run: cargo build --release --target ${{ matrix.target }} --all-features --verbose
 
       - name: Upload binaries to release
         uses: svenstaro/upload-release-action@2.3.0
