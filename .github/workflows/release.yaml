@@ -48,6 +48,9 @@ jobs:
       - name: Cross build with all features
         uses: actions-rs/cargo@v1
         env:
+          OPENSSL_DIR: /opt/openssl
+          OPENSSL_INCLUDE_DIR: /opt/openssl/include
+          OPENSSL_LIB_DIR: /opt/openssl/lib
           TARGET_CC: clang
         with:
           use-cross: true
