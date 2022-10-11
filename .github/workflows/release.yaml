@@ -43,10 +43,12 @@ jobs:
 
       - name: Install dependencies
         if: ${{ matrix.os == '' || startsWith(matrix.os, 'ubuntu') }}
-        run: sudo apt-get update && sudo apt-get install pkg-config libssl-dev
+        run: sudo apt-get update && sudo apt-get install pkg-config libssl-dev clang
 
       - name: Cross build with all features
         uses: actions-rs/cargo@v1
+        env:
+          TARGET_CC: clang
         with:
           use-cross: true
           command: build
