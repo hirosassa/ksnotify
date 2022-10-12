@@ -2,9 +2,8 @@ name: Release
 
 on:
   push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+    tags:
+      - '*'
 
 jobs:
   build:
@@ -22,10 +21,6 @@ jobs:
             target: x86_64-unknown-linux-musl
             artifact_name: ksnotify
             asset_name: ksnotify-x86_64-unknown-linux-musl
-          # - os: ubuntu-latest
-          #   target: x86_64-pc-windows-gnu
-          #   artifact_name: ksnotify.exe
-          #   asset_name: ksnotify-x86_64-pc-windows-gnu.exe
           - os: macos-latest
             target: x86_64-apple-darwin
             artifact_name: ksnotify
@@ -43,10 +38,6 @@ jobs:
         with:
           target: ${{ matrix.target }}
 
-      # - name: Install dependencies
-      #   run: sudo apt-get install pkg-config libssl-dev
-      #   if: matrix.os == '' || startsWith(matrix.os, 'ubuntu')
-
       - name: Install cross
         uses: taiki-e/install-action@cross
         if: matrix.os == '' || startsWith(matrix.os, 'ubuntu')
@@ -57,11 +48,11 @@ jobs:
       - name: Cross build with all features
         run: $cargo build --release --target ${{ matrix.target }} --all-features --verbose
 
-      # - name: Upload binaries to release
-      #   uses: svenstaro/upload-release-action@2.3.0
-      #   with:
-      #     repo_token: ${{ secrets.GITHUB_TOKEN }}
-      #     file: target/${{ matrix.target }}/release/${{ matrix.artifact_name }}
-      #     asset_name: ${{ matrix.asset_name }}
-      #     tag: ${{ github.ref }}
-      #     overwrite: true
+      - name: Upload binaries to release
+        uses: svenstaro/upload-release-action@2.3.0
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: target/${{ matrix.target }}/release/${{ matrix.artifact_name }}
+          asset_name: ${{ matrix.asset_name }}
+          tag: ${{ github.ref }}
+          overwrite: true
