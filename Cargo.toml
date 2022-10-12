@@ -16,3 +16,4 @@ strum_macros = "0.21"
 thiserror = "1.0"
 regex = "1"
 itertools = "0.10.5"
+openssl = { version = "0.10", features = ["vendored"] }
