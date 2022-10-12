@@ -45,8 +45,10 @@ jobs:
         uses: taiki-e/install-action@cross
         if: matrix.os == '' || startsWith(matrix.os, 'ubuntu')
 
+      - run: echo "cargo=cross" >>"${GITHUB_ENV}"
+        if: matrix.target != 'x86_64-unknown-linux-gnu' && startsWith(matrix.os, 'ubuntu')
       - name: Cross build with all features
-        run: cross build --release --target ${{ matrix.target }} --all-features --verbose
+        run: $cargo build --release --target ${{ matrix.target }} --all-features --verbose
 
       # - name: Upload binaries to release
       #   uses: svenstaro/upload-release-action@2.3.0
