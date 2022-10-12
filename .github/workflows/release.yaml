@@ -9,6 +9,8 @@ on:
 jobs:
   build:
     name: Release binary
+    env:
+      cargo: cargo
     strategy:
       matrix:
         include:
