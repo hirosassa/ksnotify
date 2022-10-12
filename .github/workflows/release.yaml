@@ -45,6 +45,7 @@ jobs:
 
       - name: Install dependencies
         run: sudo apt-get install pkg-config libssl-dev
+        if: matrix.os == '' || startsWith(matrix.os, 'ubuntu')
 
       - name: Install cross
         uses: taiki-e/install-action@cross
