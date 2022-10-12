@@ -44,7 +44,8 @@ jobs:
           target: ${{ matrix.target }}
 
       - name: Install dependencies
-        run: apt-get install pkg-config libssl-dev
+        run: sudo apt-get install pkg-config libssl-dev
+
       - name: Install cross
         uses: taiki-e/install-action@cross
         if: matrix.os == '' || startsWith(matrix.os, 'ubuntu')
