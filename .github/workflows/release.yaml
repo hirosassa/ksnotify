@@ -39,7 +39,7 @@ jobs:
       - name: Install stable toolchain
         uses: dtolnay/rust-toolchain@v1
         with:
-          toolchain: stable
+          target: ${{ matrix.target }}
 
       - name: Install cross
         uses: taiki-e/install-action@cross
@@ -47,6 +47,7 @@ jobs:
 
       - run: echo "cargo=cross" >>"${GITHUB_ENV}"
         if: matrix.target != 'x86_64-unknown-linux-gnu' && startsWith(matrix.os, 'ubuntu')
+
       - name: Cross build with all features
         run: $cargo build --release --target ${{ matrix.target }} --all-features --verbose
 
