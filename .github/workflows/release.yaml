@@ -41,19 +41,12 @@ jobs:
         with:
           toolchain: stable
 
-      - name: Install dependencies
-        if: ${{ matrix.os == '' || startsWith(matrix.os, 'ubuntu') }}
-        run: sudo apt-get update && sudo apt-get install libssl-dev pkg-config
+      - name: Install cross
+        uses: taiki-e/install-action@cross
+        if: matrix.os == '' || startsWith(matrix.os, 'ubuntu')
 
       - name: Cross build with all features
-        uses: actions-rs/cargo@v1
-        env:
-          OPENSSL_STATIC: "1"
-          OPENSSL_LIB_DIR: /usr/lib/x86_64-linux-gnu/
-          OPENSSL_INCLUDE_DIR: /usr/include/openssl
-        with:
-          command: build
-          args: --release --target ${{ matrix.target }} --all-features --verbose
+        run: cross build --release --target ${{ matrix.target }} --all-features --verbose
 
       # - name: Upload binaries to release
       #   uses: svenstaro/upload-release-action@2.3.0
