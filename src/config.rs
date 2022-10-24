@@ -41,10 +41,10 @@ impl Config {
             });
         }
 
-        match cli.config.as_deref() {
-            Some(path) => Self::from_file(path.to_path_buf()),
-            None => Self::from_env(),
-        }
+        cli.config.as_deref().map_or_else(
+            Self::from_env,
+            |path| Self::from_file(path.to_path_buf()),
+        )
     }
 
     fn from_file(path: PathBuf) -> Result<Self> {
