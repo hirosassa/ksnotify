@@ -22,9 +22,9 @@ impl CI {
             CIKind::GitLab => {
                 // todo: make this as function
                 let job_url = env::var("CI_JOB_URL")
-                    .with_context(|| format!("CI_JOB_URL is not provided."))?;
+                    .with_context(|| "CI_JOB_URL is not provided.".to_string())?;
                 let number = env::var("CI_MERGE_REQUEST_IID")
-                    .with_context(|| format!("CI_MERGE_REQUEST_IID is not provided"))?
+                    .with_context(|| "CI_MERGE_REQUEST_IID is not provided".to_string())?
                     .parse()?;
                 let merge_request = MergeRequest { number };
                 Ok(Self {

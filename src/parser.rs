@@ -94,18 +94,18 @@ mod tests {
 
     #[test]
     fn test_parse_correctly_parse_diff() {
-        let diff = "diff -uN /var/folders/fl/blahblah/v1.Service.test.test-app1 /var/folders/fl/blahblah/v1.Service.test.test-app1
+        let diff = "diff -u -N /var/folders/fl/blahblah/v1.Service.test.test-app1 /var/folders/fl/blahblah/v1.Service.test.test-app1
 --- /var/folders/fl/blahblah/v1.Service.test.test-app	2022-02-22 22:00:00.000000000 +0900
 +++ /var/folders/fl/blahblah/v1.Service.test.test-app	2022-02-22 22:00:00.000000000 +0900
 ABCDE
 FGHIJ
-diff -uN /var/folders/fl/blahblah/v1.Service.test.test-app2 /var/folders/fl/blahblah/v1.Service.test.test-app2
+diff -u -N /var/folders/fl/blahblah/v1.Service.test.test-app2 /var/folders/fl/blahblah/v1.Service.test.test-app2
 --- /var/folders/fl/blahblah/v1.Service.test.test-app	2022-02-22 22:00:00.000000000 +0900
 +++ /var/folders/fl/blahblah/v1.Service.test.test-app	2022-02-22 22:00:00.000000000 +0900
 12345
 67890";
         let parser = self::DiffParser::new(false).unwrap();
-        let actual = parser.parse(&diff).unwrap();
+        let actual = parser.parse(diff).unwrap();
         assert_eq!(actual.kind_result.len(), 2);
 
         let keys = vec!["v1.Service.test.test-app1", "v1.Service.test.test-app2"];
@@ -117,37 +117,37 @@ diff -uN /var/folders/fl/blahblah/v1.Service.test.test-app2 /var/folders/fl/blah
 
     #[test]
     fn test_parse_kinds_correctly_extracts_kind() {
-        let diff = "diff -uN /var/folders/fl/blahblah/v1.Service.test.test-app1 /var/folders/fl/blahblah/v1.Service.test.test-app1
+        let diff = "diff -u -N /var/folders/fl/blahblah/v1.Service.test.test-app1 /var/folders/fl/blahblah/v1.Service.test.test-app1
 --- /var/folders/fl/blahblah/v1.Service.test.test-app	2022-02-22 22:00:00.000000000 +0900
 +++ /var/folders/fl/blahblah/v1.Service.test.test-app	2022-02-22 22:00:00.000000000 +0900
 ABCDE
 FGHIJ
-diff -uN /var/folders/fl/blahblah/v1.Service.test.test-app2 /var/folders/fl/blahblah/v1.Service.test.test-app2
+diff -u -N /var/folders/fl/blahblah/v1.Service.test.test-app2 /var/folders/fl/blahblah/v1.Service.test.test-app2
 --- /var/folders/fl/blahblah/v1.Service.test.test-app	2022-02-22 22:00:00.000000000 +0900
 +++ /var/folders/fl/blahblah/v1.Service.test.test-app	2022-02-22 22:00:00.000000000 +0900
 12345
 67890";
 
         let parser = self::DiffParser::new(false).unwrap();
-        let actual = parser.parse_kinds(&diff);
+        let actual = parser.parse_kinds(diff);
         let expected = vec!["v1.Service.test.test-app1", "v1.Service.test.test-app2"];
         assert_eq!(&actual[..], &expected[..]);
     }
 
     #[test]
     fn test_parse_diff_correctly_extracts_list_of_diff_body() {
-        let diff = "diff -uN /var/folders/fl/blahblah/v1.Service.test.test-app /var/folders/fl/blahblah/v1.Service.test.test-app
+        let diff = "diff -u -N /var/folders/fl/blahblah/v1.Service.test.test-app /var/folders/fl/blahblah/v1.Service.test.test-app
 --- /var/folders/fl/blahblah/v1.Service.test.test-app	2022-02-22 22:00:00.000000000 +0900
 +++ /var/folders/fl/blahblah/v1.Service.test.test-app	2022-02-22 22:00:00.000000000 +0900
 ABCDE
 FGHIJ
-diff -uN /var/folders/fl/blahblah/v1.Service.test.test-app2 /var/folders/fl/blahblah/v1.Service.test.test-app2
+diff -u -N /var/folders/fl/blahblah/v1.Service.test.test-app2 /var/folders/fl/blahblah/v1.Service.test.test-app2
 --- /var/folders/fl/blahblah/v1.Service.test.test-app	2022-02-22 22:00:00.000000000 +0900
 +++ /var/folders/fl/blahblah/v1.Service.test.test-app	2022-02-22 22:00:00.000000000 +0900
 12345
 67890";
         let parser = self::DiffParser::new(false).unwrap();
-        let actual = parser.parse_diff(&diff);
+        let actual = parser.parse_diff(diff);
         let expected = vec!["ABCDE\nFGHIJ", "12345\n67890"];
         assert_eq!(&actual[..], &expected[..]);
     }
@@ -159,7 +159,7 @@ def
 - hij
 + klm";
         let parser = self::DiffParser::new(false).unwrap();
-        let actual = parser.is_there_any_diff(&diff);
+        let actual = parser.is_there_any_diff(diff);
         assert!(actual);
     }
 
@@ -169,7 +169,7 @@ def
 def
 hij";
         let parser = self::DiffParser::new(false).unwrap();
-        let actual = parser.is_there_any_diff(&diff);
+        let actual = parser.is_there_any_diff(diff);
         assert!(!actual);
     }
 

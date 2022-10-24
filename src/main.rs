@@ -72,6 +72,6 @@ fn run() -> Result<()> {
 
     notifier
         .notify(template.render()?)
-        .with_context(|| format!("failed to notify"))?;
+        .with_context(|| "failed to notify".to_string())?;
     Ok(())
 }

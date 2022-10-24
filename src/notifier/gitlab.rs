@@ -24,7 +24,7 @@ impl GitlabNotifier {
         let base_url = Self::get_base_url()?;
         let token = Self::get_token()?;
         let client =
-            Gitlab::new(&base_url, &token).with_context(|| format!("failed to create client"))?;
+            Gitlab::new(&base_url, &token).with_context(|| "failed to create client".to_string())?;
         let project = Self::get_project()?;
         Ok(Self {
             client,
