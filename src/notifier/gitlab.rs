@@ -1,6 +1,6 @@
 use crate::ci::CI;
 
-use anyhow::{Result, Context};
+use anyhow::{Context, Result};
 use gitlab::api::{self, projects::merge_requests::notes::CreateMergeRequestNote, Query};
 use gitlab::Gitlab;
 use log::info;
@@ -23,7 +23,8 @@ impl GitlabNotifier {
 
         let base_url = Self::get_base_url()?;
         let token = Self::get_token()?;
-        let client = Gitlab::new(&base_url, &token).with_context(|| format!("failed to create client"))?;
+        let client =
+            Gitlab::new(&base_url, &token).with_context(|| format!("failed to create client"))?;
         let project = Self::get_project()?;
         Ok(Self {
             client,
