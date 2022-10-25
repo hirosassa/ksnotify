@@ -41,10 +41,9 @@ impl Config {
             });
         }
 
-        cli.config.as_deref().map_or_else(
-            Self::from_env,
-            |path| Self::from_file(path.to_path_buf()),
-        )
+        cli.config
+            .as_deref()
+            .map_or_else(Self::from_env, |path| Self::from_file(path.to_path_buf()))
     }
 
     fn from_file(path: PathBuf) -> Result<Self> {
