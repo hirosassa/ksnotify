@@ -38,7 +38,7 @@ impl GitlabNotifier {
     }
 
     fn get_base_url() -> Result<String> {
-        Ok(env::var("CI_SERVER_URL")?)
+        Ok(env::var("CI_SERVER_HOST")?)
     }
 
     fn get_project() -> Result<u64> {
