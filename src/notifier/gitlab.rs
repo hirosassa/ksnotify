@@ -1,59 +1,57 @@
 use crate::ci::CI;
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use gitlab::api::{self, projects::merge_requests::notes::CreateMergeRequestNote, Query};
 use gitlab::Gitlab;
-use yaml_rust::Yaml;
+use log::info;
+use std::env;
 
 use super::Notifiable;
 
-#[derive(Debug)]
-struct Repository {
-    owner: String,
-    project: String,
-}
+const ENV_GITLAB_TOKEN: &str = "GITLAB_TOKEN";
 
 #[derive(Debug)]
 pub struct GitlabNotifier {
     client: Gitlab,
-    repository: Repository,
+    project: u64,
     ci: CI,
 }
 
 impl GitlabNotifier {
-    pub fn new(ci: CI, config: Yaml) -> Result<Self> {
-        let gitlab_config = &config["gitlab"];
-        let client = Gitlab::new(
-            gitlab_config["base_url"]
-                .as_str()
-                .expect("failed to load base_url of GitLab config"),
-            gitlab_config["token"]
-                .as_str()
-                .expect("failed to load token of GitLab config"),
-        )?;
-        let repository = Repository {
-            owner: gitlab_config["repository"]["owner"]
-                .as_str()
-                .expect("failed to load the owner of the repository")
-                .to_string(),
-            project: gitlab_config["repository"]["project"]
-                .as_str()
-                .expect("failed to load the project name of the repository")
-                .to_string(),
-        };
+    pub fn new(ci: &CI) -> Result<Self> {
+        info!("create GitLab client");
+
+        let base_url = Self::get_base_url()?;
+        let token = Self::get_token()?;
+        let client = Gitlab::new(&base_url, &token)
+            .with_context(|| "failed to create client".to_string())?;
+        let project = Self::get_project()?;
         Ok(Self {
             client,
-            repository,
-            ci,
+            project,
+            ci: ci.clone(),
         })
+    }
+
+    fn get_token() -> Result<String> {
+        Ok(env::var(ENV_GITLAB_TOKEN)?)
+    }
+
+    fn get_base_url() -> Result<String> {
+        Ok(env::var("CI_SERVER_URL")?)
+    }
+
+    fn get_project() -> Result<u64> {
+        Ok(env::var("CI_PROJECT_ID")?.parse::<u64>()?)
     }
 }
 
 impl Notifiable for GitlabNotifier {
     fn notify(&self, body: String) -> Result<()> {
-        let project = format!("{}/{}", self.repository.owner, self.repository.project);
+        info!("notify to GitLab");
+
         let note = CreateMergeRequestNote::builder()
-            .project(project)
+            .project(self.project)
             .merge_request(*self.ci.merge_request().number())
             .body(body)
             .build()

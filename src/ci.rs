@@ -1,34 +1,42 @@
-use anyhow::Result;
+use anyhow::{Context, Result};
+use log::info;
 use std::env;
 use strum_macros::EnumString;
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, EnumString)]
 pub enum CIKind {
-    #[strum(serialize = "gitlabci")]
+    #[strum(serialize = "gitlab")]
     GitLab,
 }
 
 #[derive(Clone, Debug)]
 pub struct CI {
-    url: String,
+    job_url: String,
     merge_request: MergeRequest,
 }
 
 impl CI {
     pub fn new(ci: CIKind) -> Result<Self> {
+        info!("create ci with {:?}", ci);
         match ci {
             CIKind::GitLab => {
                 // todo: make this as function
-                let url = env::var("CI_JOB_URL")?;
-                let number = env::var("CI_MERGE_REQUEST_IID")?.parse()?;
+                let job_url = env::var("CI_JOB_URL")
+                    .with_context(|| "CI_JOB_URL is not provided.".to_string())?;
+                let number = env::var("CI_MERGE_REQUEST_IID")
+                    .with_context(|| "CI_MERGE_REQUEST_IID is not provided".to_string())?
+                    .parse()?;
                 let merge_request = MergeRequest { number };
-                Ok(Self { url, merge_request })
+                Ok(Self {
+                    job_url,
+                    merge_request,
+                })
             }
         }
     }
 
-    pub const fn url(&self) -> &String {
-        &self.url
+    pub const fn job_url(&self) -> &String {
+        &self.job_url
     }
 
     pub const fn merge_request(&self) -> &MergeRequest {
