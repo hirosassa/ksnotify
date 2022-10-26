@@ -8,7 +8,7 @@ use std::env;
 
 use super::Notifiable;
 
-const ENV_GITLAB_TOKEN: &str = "GITLAB_TOKEN";
+const ENV_GITLAB_TOKEN: &str = "KSNOTIFY_GITLAB_TOKEN";
 
 #[derive(Debug)]
 pub struct GitlabNotifier {

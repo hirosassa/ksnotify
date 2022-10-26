@@ -52,7 +52,7 @@ The comment posted by ksnotify is as follows:
 Create and export GitLab access token to environmental variables as follows:
 
 ```console
-export GITLAB_TOKEN="xxxxxx"
+export KSNOTIFY_GITLAB_TOKEN="xxxxxx"
 ```
 ref: [Project access tokens | GitLab](https://docs.gitlab.com/ee/user/project/settings/project_access_tokens.html)
 
@@ -64,8 +64,8 @@ Basic usage is as follows:
 skaffold render -p dev | kubectl diff -f - 2> /dev/null | | ksnotify --notifier gitlab --ci gitlab
 ```
 
-To suppress `skaffold` labels like `skaffold.dev/run-id: 1234` automatically added by `skaffold`, you should declare
+To suppress `skaffold` labels like `skaffold.dev/run-id: 1234` automatically added by `skaffold`, you should add `--suppress-skaffold` flag like
 
 ```console
-export KSNOTIFY_SUPPRESS_SKAFFOLD=1
+skaffold render -p dev | kubectl diff -f - 2> /dev/null | | ksnotify --notifier gitlab --ci gitlab --suppress-skaffold
 ```
