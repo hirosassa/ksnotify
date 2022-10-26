@@ -29,15 +29,19 @@ jobs:
 
       - name: Run cargo check
         run: cargo check
+        continue-on-error: ${{ matrix.rust == 'nightly' }}
 
       - name: Run cargo fmt
         run: cargo fmt --all -- --check
+        continue-on-error: ${{ matrix.rust == 'nightly' }}
 
       - name: Run cargo clippy
         run: cargo clippy -- -D warnings -W clippy::nursery
+        continue-on-error: ${{ matrix.rust == 'nightly' }}
 
       - name: Run cargo test
         run: cargo test --release --all-features
+        continue-on-error: ${{ matrix.rust == 'nightly' }}
 
   coverage:
     runs-on: ubuntu-latest
@@ -56,3 +60,4 @@ jobs:
         with:
           files: lcov.info
           fail_ci_if_error: true
+        continue-on-error: true
