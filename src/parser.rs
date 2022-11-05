@@ -61,13 +61,13 @@ impl DiffParser {
             .collect()
     }
 
-    fn suppress_generation_field(
+    fn suppress_generation_fields(
         &self,
         result: HashMap<String, String>,
     ) -> HashMap<String, String> {
         result
             .iter()
-            .map(|(kind, diff)| (kind, self.remove_generation_field(diff)))
+            .map(|(kind, diff)| (kind, self.remove_generation_fields(diff)))
             .filter(|(_kind, diff)| self.is_there_any_diff(diff))
             .map(|(kind, diff)| (kind.to_string(), diff))
             .collect()
@@ -77,7 +77,7 @@ impl DiffParser {
         self.skaffold.replace_all(diff, "").to_string()
     }
 
-    fn remove_generation_field(&self, diff: &str) -> String {
+    fn remove_generation_fields(&self, diff: &str) -> String {
         self.generation.replace_all(diff, "").to_string()
     }
 
@@ -99,7 +99,7 @@ impl Parsable for DiffParser {
             .map(|(k, v)| (k.to_string(), v.to_string()))
             .collect();
 
-        result = self.suppress_generation_field(result);
+        result = self.suppress_generation_fields(result);
 
         if self.suppress_skaffold {
             result = self.suppress_skaffold_labels(result);
@@ -308,7 +308,7 @@ hij";
     }
 
     #[test]
-    fn test_remove_generation_field_removes_generation_field() {
+    fn test_remove_generation_fields_removes_generation_fields() {
         let diff = "
 @@ -5,9 +5,7 @@
 -  generation: 18
@@ -317,7 +317,7 @@ hij";
    namespace: test
 ";
         let parser = self::DiffParser::new(true).unwrap();
-        let actual = parser.remove_generation_field(diff);
+        let actual = parser.remove_generation_fields(diff);
         let expected = "
 @@ -5,9 +5,7 @@
    name: test-app
@@ -327,14 +327,14 @@ hij";
     }
 
     #[test]
-    fn test_remove_generation_field_do_nothing() {
+    fn test_remove_generation_fields_do_nothing() {
         let diff = "
 @@ -5,9 +5,7 @@
    name: test-app
    namespace: test
 ";
         let parser = self::DiffParser::new(true).unwrap();
-        let actual = parser.remove_skaffold_labels(diff);
+        let actual = parser.remove_generation_fields(diff);
         let expected = "
 @@ -5,9 +5,7 @@
    name: test-app
