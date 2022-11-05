@@ -121,19 +121,19 @@ mod tests {
         let diff = "diff -u -N /var/folders/fl/blahblah/v1.Service.test.test-app1 /var/folders/fl/blahblah/v1.Service.test.test-app1
 --- /var/folders/fl/blahblah/v1.Service.test.test-app	2022-02-22 22:00:00.000000000 +0900
 +++ /var/folders/fl/blahblah/v1.Service.test.test-app	2022-02-22 22:00:00.000000000 +0900
-ABCDE
-FGHIJ
+- ABCDE
++ FGHIJ
 diff -u -N /var/folders/fl/blahblah/v1.Service.test.test-app2 /var/folders/fl/blahblah/v1.Service.test.test-app2
 --- /var/folders/fl/blahblah/v1.Service.test.test-app	2022-02-22 22:00:00.000000000 +0900
 +++ /var/folders/fl/blahblah/v1.Service.test.test-app	2022-02-22 22:00:00.000000000 +0900
-12345
-67890";
+- 12345
++ 67890";
         let parser = self::DiffParser::new(false).unwrap();
         let actual = parser.parse(diff).unwrap();
         assert_eq!(actual.kind_result.len(), 2);
 
         let keys = vec!["v1.Service.test.test-app1", "v1.Service.test.test-app2"];
-        let values = vec!["ABCDE\nFGHIJ", "12345\n67890"];
+        let values = vec!["- ABCDE\n+ FGHIJ", "- 12345\n+ 67890"];
         for (k, v) in keys.iter().zip(values) {
             assert_eq!(actual.kind_result[&k.to_string()], v.to_string())
         }
