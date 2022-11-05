@@ -8,7 +8,7 @@ mod template;
 use anyhow::{Context, Result};
 use clap::Parser;
 use clap_verbosity_flag::Verbosity;
-use log::{error, info};
+use log::{error, info, debug};
 use notifier::Notifiable;
 use parser::Parsable;
 use std::io::{self, Read};
@@ -51,6 +51,7 @@ fn run() -> Result<()> {
     env_logger::Builder::new()
         .filter_level(cli.verbose.log_level_filter())
         .init();
+    debug!("verbose mode");
 
     let config =
         config::Config::new(&cli).with_context(|| format!("failed to load config: {:?}", cli))?;
