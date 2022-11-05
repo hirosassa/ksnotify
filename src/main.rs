@@ -8,7 +8,7 @@ mod template;
 use anyhow::{Context, Result};
 use clap::Parser;
 use clap_verbosity_flag::Verbosity;
-use log::{error, info, debug};
+use log::{debug, error, info};
 use notifier::Notifiable;
 use parser::Parsable;
 use std::io::{self, Read};

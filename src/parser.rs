@@ -17,6 +17,7 @@ pub struct DiffParser {
     diff: Regex,
     skaffold: Regex,
     suppress_skaffold: bool,
+    generation: Regex,
 }
 
 impl DiffParser {
@@ -25,12 +26,14 @@ impl DiffParser {
         let header = Regex::new(r"(?m)^((diff -u -N)|(\-\-\-)|(\+\+\+)).*$")?; // matches diff header that starts with "diff -u -N" or "---" or "+++"
         let diff = Regex::new(r"(?m)^[\-\+].*$")?;
         let skaffold = Regex::new(r"(?m)^(.*labels:.*\r?\n?)?.*skaffold.dev/run-id.*\r?\n?")?;
+        let generation = Regex::new(r"(?m)^.*generation: \d+.*\r?\n?")?;
         Ok(Self {
             kind,
             header,
             diff,
             skaffold,
             suppress_skaffold,
+            generation,
         })
     }
 
@@ -58,8 +61,24 @@ impl DiffParser {
             .collect()
     }
 
+    fn suppress_generation_field(
+        &self,
+        result: HashMap<String, String>,
+    ) -> HashMap<String, String> {
+        result
+            .iter()
+            .map(|(kind, diff)| (kind, self.remove_generation_field(diff)))
+            .filter(|(_kind, diff)| self.is_there_any_diff(diff))
+            .map(|(kind, diff)| (kind.to_string(), diff))
+            .collect()
+    }
+
     fn remove_skaffold_labels(&self, diff: &str) -> String {
         self.skaffold.replace_all(diff, "").to_string()
+    }
+
+    fn remove_generation_field(&self, diff: &str) -> String {
+        self.generation.replace_all(diff, "").to_string()
     }
 
     fn is_there_any_diff(&self, body: &str) -> bool {
@@ -79,6 +98,8 @@ impl Parsable for DiffParser {
             .zip(chunked_diff.iter())
             .map(|(k, v)| (k.to_string(), v.to_string()))
             .collect();
+
+        result = self.suppress_generation_field(result);
 
         if self.suppress_skaffold {
             result = self.suppress_skaffold_labels(result);
@@ -282,6 +303,42 @@ hij";
            creationTimestamp: null
          spec:
            containers:
+";
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_remove_generation_field_removes_generation_field() {
+        let diff = "
+@@ -5,9 +5,7 @@
+-  generation: 18
++  generation: 19
+   name: test-app
+   namespace: test
+";
+        let parser = self::DiffParser::new(true).unwrap();
+        let actual = parser.remove_generation_field(diff);
+        let expected = "
+@@ -5,9 +5,7 @@
+   name: test-app
+   namespace: test
+";
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_remove_generation_field_do_nothing() {
+        let diff = "
+@@ -5,9 +5,7 @@
+   name: test-app
+   namespace: test
+";
+        let parser = self::DiffParser::new(true).unwrap();
+        let actual = parser.remove_skaffold_labels(diff);
+        let expected = "
+@@ -5,9 +5,7 @@
+   name: test-app
+   namespace: test
 ";
         assert_eq!(actual, expected);
     }
