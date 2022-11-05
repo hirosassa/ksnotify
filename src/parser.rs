@@ -1,4 +1,5 @@
 use anyhow::Result;
+use log::debug;
 use regex::Regex;
 use std::collections::HashMap;
 
@@ -69,8 +70,9 @@ impl DiffParser {
 impl Parsable for DiffParser {
     fn parse(&self, diff: &str) -> Result<ParseResult> {
         let kinds = self.parse_kinds(diff);
-        eprintln!("{:?}", kinds);
+        debug!("kinds: {:?}", kinds);
         let chunked_diff = self.parse_diff(diff);
+        debug!("chunked diff: {:?}", chunked_diff);
 
         let mut result: HashMap<_, _> = kinds
             .iter()
@@ -81,6 +83,7 @@ impl Parsable for DiffParser {
         if self.suppress_skaffold {
             result = self.suppress_skaffold_labels(result);
         }
+        debug!("result: {:?}", result);
 
         Ok(ParseResult {
             kind_result: result,
