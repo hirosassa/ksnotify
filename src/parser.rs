@@ -1,4 +1,5 @@
 use anyhow::Result;
+use log::debug;
 use regex::Regex;
 use std::collections::HashMap;
 
@@ -16,20 +17,23 @@ pub struct DiffParser {
     diff: Regex,
     skaffold: Regex,
     suppress_skaffold: bool,
+    generation: Regex,
 }
 
 impl DiffParser {
     pub fn new(suppress_skaffold: bool) -> Result<Self> {
-        let kind = Regex::new(r"(?m)^diff -u\s.*/(?P<kind>[^/\s]+)\s.*/([^/\s]+)$")?; // matches line like "diff -uN /var/folders/fl/blahblah/[apiVersion].[kind].[namespace].[name]  /var/folders/fl/blahblah/[apiVersion].[kind].[namespace].[name]"
-        let header = Regex::new(r"(?m)^.*/var/folders/.*$")?; // matches diff header that contains "/var/folders/fl/blahblah/"
+        let kind = Regex::new(r"(?m)^diff -u -N\s.*/(?P<kind>[^/\s]+)\s.*/([^/\s]+)$")?; // matches line like "diff -u -N /var/folders/fl/blahblah/[apiVersion].[kind].[namespace].[name]  /var/folders/fl/blahblah/[apiVersion].[kind].[namespace].[name]"
+        let header = Regex::new(r"(?m)^((diff -u -N)|(\-\-\-)|(\+\+\+)).*$")?; // matches diff header that starts with "diff -u -N" or "---" or "+++"
         let diff = Regex::new(r"(?m)^[\-\+].*$")?;
         let skaffold = Regex::new(r"(?m)^(.*labels:.*\r?\n?)?.*skaffold.dev/run-id.*\r?\n?")?;
+        let generation = Regex::new(r"(?m)^.*generation: \d+.*\r?\n?")?;
         Ok(Self {
             kind,
             header,
             diff,
             skaffold,
             suppress_skaffold,
+            generation,
         })
     }
 
@@ -57,8 +61,24 @@ impl DiffParser {
             .collect()
     }
 
+    fn suppress_generation_fields(
+        &self,
+        result: HashMap<String, String>,
+    ) -> HashMap<String, String> {
+        result
+            .iter()
+            .map(|(kind, diff)| (kind, self.remove_generation_fields(diff)))
+            .filter(|(_kind, diff)| self.is_there_any_diff(diff))
+            .map(|(kind, diff)| (kind.to_string(), diff))
+            .collect()
+    }
+
     fn remove_skaffold_labels(&self, diff: &str) -> String {
         self.skaffold.replace_all(diff, "").to_string()
+    }
+
+    fn remove_generation_fields(&self, diff: &str) -> String {
+        self.generation.replace_all(diff, "").to_string()
     }
 
     fn is_there_any_diff(&self, body: &str) -> bool {
@@ -69,8 +89,9 @@ impl DiffParser {
 impl Parsable for DiffParser {
     fn parse(&self, diff: &str) -> Result<ParseResult> {
         let kinds = self.parse_kinds(diff);
-        eprintln!("{:?}", kinds);
+        debug!("kinds: {:?}", kinds);
         let chunked_diff = self.parse_diff(diff);
+        debug!("chunked diff: {:?}", chunked_diff);
 
         let mut result: HashMap<_, _> = kinds
             .iter()
@@ -78,9 +99,12 @@ impl Parsable for DiffParser {
             .map(|(k, v)| (k.to_string(), v.to_string()))
             .collect();
 
+        result = self.suppress_generation_fields(result);
+
         if self.suppress_skaffold {
             result = self.suppress_skaffold_labels(result);
         }
+        debug!("result: {:?}", result);
 
         Ok(ParseResult {
             kind_result: result,
@@ -97,19 +121,19 @@ mod tests {
         let diff = "diff -u -N /var/folders/fl/blahblah/v1.Service.test.test-app1 /var/folders/fl/blahblah/v1.Service.test.test-app1
 --- /var/folders/fl/blahblah/v1.Service.test.test-app	2022-02-22 22:00:00.000000000 +0900
 +++ /var/folders/fl/blahblah/v1.Service.test.test-app	2022-02-22 22:00:00.000000000 +0900
-ABCDE
-FGHIJ
+- ABCDE
++ FGHIJ
 diff -u -N /var/folders/fl/blahblah/v1.Service.test.test-app2 /var/folders/fl/blahblah/v1.Service.test.test-app2
 --- /var/folders/fl/blahblah/v1.Service.test.test-app	2022-02-22 22:00:00.000000000 +0900
 +++ /var/folders/fl/blahblah/v1.Service.test.test-app	2022-02-22 22:00:00.000000000 +0900
-12345
-67890";
+- 12345
++ 67890";
         let parser = self::DiffParser::new(false).unwrap();
         let actual = parser.parse(diff).unwrap();
         assert_eq!(actual.kind_result.len(), 2);
 
         let keys = vec!["v1.Service.test.test-app1", "v1.Service.test.test-app2"];
-        let values = vec!["ABCDE\nFGHIJ", "12345\n67890"];
+        let values = vec!["- ABCDE\n+ FGHIJ", "- 12345\n+ 67890"];
         for (k, v) in keys.iter().zip(values) {
             assert_eq!(actual.kind_result[&k.to_string()], v.to_string())
         }
@@ -279,6 +303,42 @@ hij";
            creationTimestamp: null
          spec:
            containers:
+";
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_remove_generation_fields_removes_generation_fields() {
+        let diff = "
+@@ -5,9 +5,7 @@
+-  generation: 18
++  generation: 19
+   name: test-app
+   namespace: test
+";
+        let parser = self::DiffParser::new(true).unwrap();
+        let actual = parser.remove_generation_fields(diff);
+        let expected = "
+@@ -5,9 +5,7 @@
+   name: test-app
+   namespace: test
+";
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_remove_generation_fields_do_nothing() {
+        let diff = "
+@@ -5,9 +5,7 @@
+   name: test-app
+   namespace: test
+";
+        let parser = self::DiffParser::new(true).unwrap();
+        let actual = parser.remove_generation_fields(diff);
+        let expected = "
+@@ -5,9 +5,7 @@
+   name: test-app
+   namespace: test
 ";
         assert_eq!(actual, expected);
     }
