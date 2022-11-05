@@ -21,7 +21,7 @@ pub struct DiffParser {
 
 impl DiffParser {
     pub fn new(suppress_skaffold: bool) -> Result<Self> {
-        let kind = Regex::new(r"(?m)^diff -u\s.*/(?P<kind>[^/\s]+)\s.*/([^/\s]+)$")?; // matches line like "diff -uN /var/folders/fl/blahblah/[apiVersion].[kind].[namespace].[name]  /var/folders/fl/blahblah/[apiVersion].[kind].[namespace].[name]"
+        let kind = Regex::new(r"(?m)^diff -u -N\s.*/(?P<kind>[^/\s]+)\s.*/([^/\s]+)$")?; // matches line like "diff -uN /var/folders/fl/blahblah/[apiVersion].[kind].[namespace].[name]  /var/folders/fl/blahblah/[apiVersion].[kind].[namespace].[name]"
         let header = Regex::new(r"(?m)^.*/var/folders/.*$")?; // matches diff header that contains "/var/folders/fl/blahblah/"
         let diff = Regex::new(r"(?m)^[\-\+].*$")?;
         let skaffold = Regex::new(r"(?m)^(.*labels:.*\r?\n?)?.*skaffold.dev/run-id.*\r?\n?")?;
