@@ -69,3 +69,5 @@ To suppress `skaffold` labels like `skaffold.dev/run-id: 1234` automatically add
 ```console
 skaffold render -p dev | kubectl diff -f - 2> /dev/null | | ksnotify --notifier gitlab --ci gitlab --suppress-skaffold
 ```
+
+The concrete example of GitLab CI configuration is shown in [example](https://github.com/hirosassa/ksnotify/tree/main/example).

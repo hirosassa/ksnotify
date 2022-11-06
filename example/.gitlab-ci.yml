@@ -1,0 +1,21 @@
+# -- required environmental variables
+# * ENV: environmental name like dev
+# * SKAFFOLD_DIR: the derectory name that has skaffold.yml
+# * KSNOTIFY_GITLAB_TOKEN: the access token of GitLab for api access of ksnotify
+#
+# -- required tools
+# * ksnotify
+# * skaffold
+# * kubectl
+# * curl
+
+ksnotify:
+  stage: ksnotify
+  before_script:
+    - authenticate to your Kubernetes cluster
+    - curl -fL -o /usr/bin/ksnotify https://github.com/hirosassa/ksnotify/releases/latest/download/ksnotify-x86_64-unknown-linux-musl
+    - chmod a+x /usr/bin/ksnotify
+  script:
+    - cd "${SKAFFOLD_DIR}"
+    - skaffold render -p ${ENV} | kubectl diff -f - 2> /dev/null | ksnotify --notifier gitlab --ci gitlab --suppress-skaffold || exit_code=$?
+    # `exit_code=$?` is for preventing job failure due to kubectl's retrurning exit 1 when there's the diff
