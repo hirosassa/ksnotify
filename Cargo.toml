@@ -1,6 +1,8 @@
 [package]
 name = "ksnotify"
-version = "0.1.0"
+authors = ["hirosassa <hiro.sassa@gmail.com>"]
+description = "A CLI command to parse kubectl diff result and notify it to GitLab"
+version = "0.1.7"
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
