@@ -60,6 +60,14 @@ fn run() -> Result<()> {
     let config =
         config::Config::new(&cli).with_context(|| format!("failed to load config: {:?}", cli))?;
     info!("config: {:?}", config);
+
+    // Local PC (for debug)
+    if config.ci == ci::CIKind::Local {
+        let content = process(config, None, cli.target)?;
+        println!("{}", content);
+        return Ok(());
+    }
+
     let ci =
         ci::CI::new(config.ci).with_context(|| format!("failed to create CI: {:?}", config.ci))?;
     let notifier_kind = config.notifier;
@@ -69,15 +77,19 @@ fn run() -> Result<()> {
     }
     .with_context(|| format!("failed to create notifier: {:?}", ci))?;
 
+    let content = process(config, Some(ci.job_url().to_string()), cli.target)?;
+    notifier
+        .notify(content)
+        .with_context(|| "failed to notify".to_string())?;
+    Ok(())
+}
+
+fn process(config: config::Config, url: Option<String>, target: Option<String>) -> Result<String> {
     let mut body = String::new();
     io::stdin().read_to_string(&mut body)?;
     let parser = parser::DiffParser::new(config.suppress_skaffold)?;
     let result = parser.parse(&body)?;
-    let template =
-        template::Template::new(result.kind_result, ci.job_url().to_string(), cli.target);
-
-    notifier
-        .notify(template.render()?)
-        .with_context(|| "failed to notify".to_string())?;
-    Ok(())
+    let link = url.unwrap_or_default();
+    let template = template::Template::new(result.kind_result, link, target);
+    template.render()
 }

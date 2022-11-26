@@ -5,8 +5,13 @@ use strum_macros::EnumString;
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, EnumString)]
 pub enum CIKind {
+    /// ksnotify is running on GitLab CI.
     #[strum(serialize = "gitlab")]
     GitLab,
+
+    /// ksnotify is running on Local PC (for debug).
+    #[strum(serialize = "local")]
+    Local,
 }
 
 #[derive(Clone, Debug)]
@@ -32,6 +37,10 @@ impl CI {
                     merge_request,
                 })
             }
+            CIKind::Local => Ok(Self {
+                job_url: "".to_string(),
+                merge_request: MergeRequest { number: 1 },
+            }),
         }
     }
 
