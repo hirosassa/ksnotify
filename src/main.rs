@@ -27,7 +27,11 @@ pub struct Cli {
     #[arg(long)]
     pub notifier: Option<String>,
 
-    /// Whether if suppress diffs comes from Skaffold labels
+    /// Target component name to distinguish for each environments or product.
+    #[arg(long)]
+    pub target: Option<String>,
+
+    /// Whether if suppress diffs comes from Skaffold labels.
     #[arg(long)]
     pub suppress_skaffold: bool,
 
@@ -69,7 +73,8 @@ fn run() -> Result<()> {
     io::stdin().read_to_string(&mut body)?;
     let parser = parser::DiffParser::new(config.suppress_skaffold)?;
     let result = parser.parse(&body)?;
-    let template = template::Template::new(result.kind_result, ci.job_url().to_string());
+    let template =
+        template::Template::new(result.kind_result, ci.job_url().to_string(), cli.target);
 
     notifier
         .notify(template.render()?)
