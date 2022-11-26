@@ -71,3 +71,20 @@ skaffold render -p dev | kubectl diff -f - 2> /dev/null | | ksnotify --notifier 
 ```
 
 The concrete example of GitLab CI configuration is shown in [example](https://github.com/hirosassa/ksnotify/tree/main/example).
+
+
+## For developers
+
+To run `ksnotify` locally, use local option for debug.
+For local mode, `ksnotify` just renders contents on stdout.
+
+```console
+skaffold render -p dev | kubectl diff -f - 2> /dev/null | ~/Dev/ksnotify/ksnotify --ci local --notifier gitlab --suppress-skaffold
+
+> ## Plan result
+> [CI link](  )
+>
+> * updated
+> blah
+> blah
+```
