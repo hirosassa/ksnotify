@@ -23,6 +23,7 @@ pub struct Config {
     pub ci: ci::CIKind,
     pub notifier: notifier::NotifierKind,
     pub suppress_skaffold: bool,
+    pub patch: bool,
 }
 
 impl Config {
@@ -34,10 +35,12 @@ impl Config {
             let ci = ci::CIKind::from_str(ci_kind)?;
             let notifier = notifier::NotifierKind::from_str(notifier_kind)?;
             let suppress_skaffold = cli.suppress_skaffold;
+            let patch = cli.patch;
             return Ok(Self {
                 ci,
                 notifier,
                 suppress_skaffold,
+                patch,
             });
         }
 
@@ -59,11 +62,16 @@ impl Config {
             .get("suppress_skaffold")
             .expect("failed to load the suppress_skaffold flag")
             .parse::<bool>()?;
+        let patch = doc
+            .get("patch")
+            .expect("failed to load the patch flag")
+            .parse::<bool>()?;
 
         Ok(Self {
             ci,
             notifier,
             suppress_skaffold,
+            patch,
         })
     }
 
@@ -72,10 +80,12 @@ impl Config {
         let ci = ci::CIKind::from_str(&env::var("KSNOTIFY_CI")?)?;
         let notifier = notifier::NotifierKind::from_str(&env::var("KSNOTIFY_NOTIFIER")?)?;
         let suppress_skaffold = matches!(env::var("KSNOTIFY_SUPPRESS_SKAFFOLD"), Ok(_));
+        let patch = matches!(env::var("KSNOTIFY_PATCH"), Ok(_));
         Ok(Self {
             ci,
             notifier,
             suppress_skaffold,
+            patch,
         })
     }
 }

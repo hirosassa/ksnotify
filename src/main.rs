@@ -27,6 +27,10 @@ pub struct Cli {
     #[arg(long)]
     pub notifier: Option<String>,
 
+    /// Update an existing comment instead of creating a new comment. If there is no existing comment, a new comment is created.
+    #[arg(long)]
+    pub patch: bool,
+
     /// Target component name to distinguish for each environments or product.
     #[arg(long)]
     pub target: Option<String>,
@@ -63,8 +67,8 @@ fn run() -> Result<()> {
 
     // Local PC (for debug)
     if config.ci == ci::CIKind::Local {
-        let content = process(config, None, cli.target)?;
-        println!("{}", content);
+        let content = process(&config, None, cli.target)?;
+        println!("{}", content.render()?);
         return Ok(());
     }
 
@@ -77,19 +81,23 @@ fn run() -> Result<()> {
     }
     .with_context(|| format!("failed to create notifier: {:?}", ci))?;
 
-    let content = process(config, Some(ci.job_url().to_string()), cli.target)?;
+    let template = process(&config, Some(ci.job_url().to_string()), cli.target)?;
     notifier
-        .notify(content)
+        .notify(template, config.patch)
         .with_context(|| "failed to notify".to_string())?;
     Ok(())
 }
 
-fn process(config: config::Config, url: Option<String>, target: Option<String>) -> Result<String> {
+fn process(
+    config: &config::Config,
+    url: Option<String>,
+    target: Option<String>,
+) -> Result<template::Template> {
     let mut body = String::new();
     io::stdin().read_to_string(&mut body)?;
     let parser = parser::DiffParser::new(config.suppress_skaffold)?;
     let result = parser.parse(&body)?;
     let link = url.unwrap_or_default();
     let template = template::Template::new(result.kind_result, link, target);
-    template.render()
+    Ok(template)
 }
