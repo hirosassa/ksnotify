@@ -57,6 +57,28 @@ No changes. Kubernetes configurations are up-to-date.
         Ok(format!("{}{}", title, body))
     }
 
+    pub fn is_same_build(&self, rendered_string: &str) -> Result<bool> {
+        if self.target.is_none() {
+            return Ok(false);
+        }
+
+        let old_title = match rendered_string.lines().next() {
+            // take first line (it should be title)
+            Some(title) => title,
+            None => return Ok(false),
+        };
+
+        let reg = Handlebars::new();
+        let j = serde_json::to_value(self).unwrap();
+        let current_title = reg.render_template(Self::DEFAULT_BUILD_TITLE_TEMPLATE, &j)?;
+
+        if current_title == old_title {
+            return Ok(true);
+        }
+
+        Ok(false)
+    }
+
     fn generate_changed_kinds_markdown(results: &HashMap<String, String>) -> String {
         let kinds: Vec<String> = results.keys().map(|e| e.to_string()).sorted().collect();
         format!("  * {}", kinds.join("\n  * "))
@@ -193,5 +215,41 @@ No changes. Kubernetes configurations are up-to-date.
 "
         .to_string();
         assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_is_same_build_with_target_none() {
+        let template = Template {
+            target: None,
+            changed_kinds: "test".to_string(),
+            details: "test".to_string(),
+            link: "http://example.com".to_string(),
+            is_no_changes: false,
+        };
+        assert!(!template.is_same_build("test").unwrap());
+    }
+
+    #[test]
+    fn test_is_same_build_with_same_build() {
+        let template = Template {
+            target: Some("test".to_string()),
+            changed_kinds: "test".to_string(),
+            details: "test".to_string(),
+            link: "http://example.com".to_string(),
+            is_no_changes: false,
+        };
+        assert!(template.is_same_build("## Plan result (test)").unwrap())
+    }
+
+    #[test]
+    fn test_is_same_build_with_different_build() {
+        let template = Template {
+            target: Some("test1".to_string()),
+            changed_kinds: "test".to_string(),
+            details: "test".to_string(),
+            link: "http://example.com".to_string(),
+            is_no_changes: false,
+        };
+        assert!(!template.is_same_build("## Plan result (test2)").unwrap())
     }
 }

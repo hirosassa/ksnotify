@@ -1,4 +1,6 @@
 pub mod gitlab;
+use crate::template;
+
 use anyhow::Result;
 use strum_macros::EnumString;
 
@@ -11,5 +13,5 @@ pub enum NotifierKind {
 }
 
 pub trait Notifiable {
-    fn notify(&self, body: String) -> Result<()>;
+    fn notify(&self, body: template::Template, patch: bool) -> Result<()>;
 }

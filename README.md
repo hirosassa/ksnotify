@@ -64,6 +64,12 @@ Basic usage is as follows:
 skaffold render -p dev | kubectl diff -f - 2> /dev/null | | ksnotify --notifier gitlab --ci gitlab
 ```
 
+If you want to update existing comment instead of create a new comment, you should add `--patch` flag like
+
+```console
+skaffold render -p dev | kubectl diff -f - 2> /dev/null | | ksnotify --notifier gitlab --ci gitlab --patch
+```
+
 To suppress `skaffold` labels like `skaffold.dev/run-id: 1234` automatically added by `skaffold`, you should add `--suppress-skaffold` flag like
 
 ```console
