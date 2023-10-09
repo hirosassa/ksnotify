@@ -45,6 +45,19 @@ The comment posted by ksnotify is as follows:
 
 ------------
 
+## Install
+
+### GitHub Releases
+
+Download the prebuilt binary from [GitHub Releases](https://github.com/hirosassa/ksnotify/releases) and install it to $PATH.
+
+### aqua
+
+Install ksnotify with [aqua](https://aquaproj.github.io/), which is a declarative CLI Version Manager.
+
+```console
+$ aqua g -i hirosassa/ksnotify
+```
 
 ## Usage
 ### prerequisites
