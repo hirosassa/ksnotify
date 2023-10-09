@@ -79,8 +79,8 @@ impl Config {
         info!("config file is not found, use environmental variables");
         let ci = ci::CIKind::from_str(&env::var("KSNOTIFY_CI")?)?;
         let notifier = notifier::NotifierKind::from_str(&env::var("KSNOTIFY_NOTIFIER")?)?;
-        let suppress_skaffold = matches!(env::var("KSNOTIFY_SUPPRESS_SKAFFOLD"), Ok(_));
-        let patch = matches!(env::var("KSNOTIFY_PATCH"), Ok(_));
+        let suppress_skaffold = env::var("KSNOTIFY_SUPPRESS_SKAFFOLD").is_ok();
+        let patch = env::var("KSNOTIFY_PATCH").is_ok();
         Ok(Self {
             ci,
             notifier,
