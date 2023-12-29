@@ -31,25 +31,19 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Install stable toolchain
-        uses: dtolnay/rust-toolchain@nightly
-        with:
-          target: ${{ matrix.target }}
-
-      - name: Install cross
-        uses: taiki-e/install-action@cross
-        if: matrix.os == '' || startsWith(matrix.os, 'ubuntu')
-
-      - run: echo "cargo=cross" >>"${GITHUB_ENV}"
-        if: matrix.target != 'x86_64-unknown-linux-gnu' && startsWith(matrix.os, 'ubuntu')
+      - name: Install toolchain
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
+          cargo install cross
 
       - name: Cross build with all features
-        run: $cargo build --release --target ${{ matrix.target }} --all-features --verbose
+        run: cross build --release --target ${{ matrix.target }} --all-features --verbose
 
       - name: Upload binaries to release
-        uses: svenstaro/upload-release-action@2.3.0
+        uses: svenstaro/upload-release-action@2.7.0
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: target/${{ matrix.target }}/release/${{ matrix.artifact_name }}
