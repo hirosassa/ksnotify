@@ -1,9 +1,10 @@
 use anyhow::{Context, Result};
 use log::info;
+use serde::{Deserialize, Serialize};
 use std::env;
 use strum_macros::EnumString;
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy, EnumString)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, EnumString, Serialize, Deserialize)]
 pub enum CIKind {
     /// ksnotify is running on GitLab CI.
     #[strum(serialize = "gitlab")]

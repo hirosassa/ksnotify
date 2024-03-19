@@ -3,7 +3,7 @@ use crate::{ci, notifier};
 
 use anyhow::Result;
 use log::info;
-use std::collections::HashMap;
+use serde::{Deserialize, Serialize};
 use std::env;
 use std::fs;
 use std::path::PathBuf;
@@ -18,7 +18,7 @@ enum NotifierKind {
     Slack,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Config {
     pub ci: ci::CIKind,
     pub notifier: notifier::NotifierKind,
@@ -52,27 +52,9 @@ impl Config {
     fn from_file(path: PathBuf) -> Result<Self> {
         info!("cli arguments are not set, use configuration file");
         let config_string = fs::read_to_string(path)?;
-        let doc: HashMap<String, String> = serde_yaml::from_str(&config_string)?;
-        let ci = ci::CIKind::from_str(doc.get("ci").expect("failed to load the CI type"))?;
-        let notifier = notifier::NotifierKind::from_str(
-            doc.get("notifier")
-                .expect("failed to load the Notifier type"),
-        )?;
-        let suppress_skaffold = doc
-            .get("suppress_skaffold")
-            .expect("failed to load the suppress_skaffold flag")
-            .parse::<bool>()?;
-        let patch = doc
-            .get("patch")
-            .expect("failed to load the patch flag")
-            .parse::<bool>()?;
+        let config: Config = serde_yaml::from_str(&config_string)?;
 
-        Ok(Self {
-            ci,
-            notifier,
-            suppress_skaffold,
-            patch,
-        })
+        Ok(config)
     }
 
     fn from_env() -> Result<Self> {
