@@ -43,6 +43,10 @@ pub struct Cli {
     #[arg(long, value_name = "FILE")]
     pub config: Option<PathBuf>,
 
+    /// Image names to ignore tag differences.
+    #[arg(long)]
+    pub ignore_tag_images: Vec<String>,
+
     #[clap(flatten)]
     verbose: Verbosity,
 }
@@ -95,7 +99,8 @@ fn process(
 ) -> Result<template::Template> {
     let mut body = String::new();
     io::stdin().read_to_string(&mut body)?;
-    let parser = parser::DiffParser::new(config.suppress_skaffold)?;
+    let parser =
+        parser::DiffParser::new(config.suppress_skaffold, config.ignore_tag_images.clone())?;
     let result = parser.parse(&body)?;
     let link = url.unwrap_or_default();
     let template = template::Template::new(result.kind_result, link, target);

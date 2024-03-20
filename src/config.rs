@@ -23,6 +23,7 @@ pub struct Config {
     pub ci: ci::CIKind,
     pub notifier: notifier::NotifierKind,
     pub suppress_skaffold: bool,
+    pub ignore_tag_images: Vec<String>,
     pub patch: bool,
 }
 
@@ -35,11 +36,13 @@ impl Config {
             let ci = ci::CIKind::from_str(ci_kind)?;
             let notifier = notifier::NotifierKind::from_str(notifier_kind)?;
             let suppress_skaffold = cli.suppress_skaffold;
+            let ignore_tag_images = cli.ignore_tag_images.clone();
             let patch = cli.patch;
             return Ok(Self {
                 ci,
                 notifier,
                 suppress_skaffold,
+                ignore_tag_images,
                 patch,
             });
         }
@@ -62,11 +65,16 @@ impl Config {
         let ci = ci::CIKind::from_str(&env::var("KSNOTIFY_CI")?)?;
         let notifier = notifier::NotifierKind::from_str(&env::var("KSNOTIFY_NOTIFIER")?)?;
         let suppress_skaffold = env::var("KSNOTIFY_SUPPRESS_SKAFFOLD").is_ok();
+        let ignore_tag_images = env::var("KSNOTIFY_IGNORE_TAG_IMAGES")?
+            .split(',')
+            .map(String::from)
+            .collect();
         let patch = env::var("KSNOTIFY_PATCH").is_ok();
         Ok(Self {
             ci,
             notifier,
             suppress_skaffold,
+            ignore_tag_images,
             patch,
         })
     }
