@@ -44,7 +44,7 @@ pub struct Cli {
     pub config: Option<PathBuf>,
 
     /// Image names to ignore tag differences.
-    #[arg(long)]
+    #[arg(long, value_delimiter = ',')]
     pub ignore_tag_images: Vec<String>,
 
     #[clap(flatten)]
