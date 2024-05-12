@@ -23,7 +23,7 @@ jobs:
             asset_name: ksnotify-x86_64-unknown-linux-musl
           - os: ubuntu-latest
             target: x86_64-pc-windows-gnu
-            artifact_name: bqvalid.exe
+            artifact_name: ksnotify.exe
             asset_name: ksnotify-x86_64-pc-windows-gnu.exe
           - os: macos-latest
             target: x86_64-apple-darwin
