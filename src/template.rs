@@ -5,10 +5,12 @@ use handlebars::Handlebars;
 use itertools::Itertools;
 use serde::Serialize;
 
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 pub struct Template {
     target: Option<String>,
-    changed_kinds: String,
+    configured_kinds: Vec<String>,
+    created_kinds: Vec<String>,
+    pruned_kinds: Vec<String>,
     details: String,
     link: String,
     is_no_changes: bool,
@@ -25,8 +27,24 @@ impl Template {
 No changes. Kubernetes configurations are up-to-date.
 ```
 {{else}}
-* updated
-{{ changed_kinds }}
+{{#if (gt (len created_kinds) 0)}}
+## created
+{{#each created_kinds}}
+* {{this}}
+{{/each}}
+{{/if}}
+{{#if (gt (len pruned_kinds) 0)}}
+## pruned
+{{#each pruned_kinds}}
+* {{this}}
+{{/each}}
+{{/if}}
+{{#if (gt (len configured_kinds) 0)}}
+## configured
+{{#each configured_kinds}}
+* {{this}}
+{{/each}}
+{{/if}}
 
 <details><summary>Details (Click me)</summary>
 
@@ -37,12 +55,16 @@ No changes. Kubernetes configurations are up-to-date.
 ";
 
     pub fn new(results: HashMap<String, String>, link: String, target: Option<String>) -> Self {
-        let changed_kinds = Self::generate_changed_kinds_markdown(&results);
+        let configured_kinds = Self::generate_configured_kinds_markdown(&results);
+        let created_kinds = Self::generate_created_kinds_markdown(&results);
+        let pruned_kinds = Self::generate_pruned_kinds_markdown(&results);
         let details = Self::generate_details_markdown(&results);
         let is_no_changes = results.is_empty();
         Self {
             target,
-            changed_kinds,
+            configured_kinds,
+            created_kinds,
+            pruned_kinds,
             details,
             link,
             is_no_changes,
@@ -79,9 +101,35 @@ No changes. Kubernetes configurations are up-to-date.
         Ok(false)
     }
 
-    fn generate_changed_kinds_markdown(results: &HashMap<String, String>) -> String {
-        let kinds: Vec<String> = results.keys().map(|e| e.to_string()).sorted().collect();
-        format!("  * {}", kinds.join("\n  * "))
+    fn generate_configured_kinds_markdown(results: &HashMap<String, String>) -> Vec<String> {
+        let kinds: Vec<String> = results
+            .iter()
+            .filter(|(_, e)| !e.contains("-kind: "))
+            .filter(|(_, e)| !e.contains("+kind: "))
+            .map(|(k, _)| k.clone())
+            .sorted()
+            .collect();
+        kinds
+    }
+
+    fn generate_created_kinds_markdown(results: &HashMap<String, String>) -> Vec<String> {
+        let kinds: Vec<String> = results
+            .iter()
+            .filter(|(_, e)| e.contains("+kind: "))
+            .map(|(k, _)| k.clone())
+            .sorted()
+            .collect();
+        kinds
+    }
+
+    fn generate_pruned_kinds_markdown(results: &HashMap<String, String>) -> Vec<String> {
+        let kinds: Vec<String> = results
+            .iter()
+            .filter(|(_, e)| e.contains("-kind: ")) // like "-kind: Deployment"
+            .map(|(k, _)| k.clone())
+            .sorted()
+            .collect();
+        kinds
     }
 
     fn generate_details_markdown(results: &HashMap<String, String>) -> String {
@@ -103,50 +151,113 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_generate_changed_kinds_markdown() {
-        let kinds = vec!["test1", "test2"];
-        let details = vec!["ABC", "DEF"];
-        let data: HashMap<_, _> = kinds
-            .iter()
-            .zip(details.iter())
-            .map(|(k, v)| (k.to_string(), v.to_string()))
-            .collect();
-        let actual = Template::generate_changed_kinds_markdown(&data);
-        let expected = "  * test1\n  * test2".to_string();
+    fn test_render_for_created_kinds() {
+        let data = HashMap::from([(
+            "apps.v1.Deployment.default.hoge".to_string(),
+            "+apiVersion: apps/v1
++kind: Deployment
++metadata:
++  name: hoge"
+                .to_string(),
+        )]);
+        let template = Template::new(
+            data,
+            "https://example.com".to_string(),
+            Some("target".to_string()),
+        );
+        let actual = template.render().unwrap();
+        let expected = "## Plan result (target)
+[CI link]( https://example.com )
+
+## created
+* apps.v1.Deployment.default.hoge
+
+<details><summary>Details (Click me)</summary>
+
+### apps.v1.Deployment.default.hoge
+```diff
++apiVersion: apps/v1
++kind: Deployment
++metadata:
++  name: hoge
+```
+
+</details>
+"
+        .to_string();
         assert_eq!(actual, expected);
     }
 
     #[test]
-    fn test_generate_details_markdown() {
-        let kinds = vec!["test1", "test2"];
-        let details = vec!["ABC", "DEF"];
-        let data: HashMap<_, _> = kinds
-            .iter()
-            .zip(details.iter())
-            .map(|(k, v)| (k.to_string(), v.to_string()))
-            .collect();
-        let actual = Template::generate_details_markdown(&data);
-        let expected = "### test1\n```diff\nABC\n```\n### test2\n```diff\nDEF\n```".to_string();
+    fn test_render_for_pruned_kinds() {
+        let data = HashMap::from([(
+            "apps.v1.Deployment.default.hoge".to_string(),
+            "-apiVersion: apps/v1
+-kind: Deployment
+-metadata:
+-  name: hoge"
+                .to_string(),
+        )]);
+        let template = Template::new(
+            data,
+            "https://example.com".to_string(),
+            Some("target".to_string()),
+        );
+        let actual = template.render().unwrap();
+        let expected = "## Plan result (target)
+[CI link]( https://example.com )
+
+## pruned
+* apps.v1.Deployment.default.hoge
+
+<details><summary>Details (Click me)</summary>
+
+### apps.v1.Deployment.default.hoge
+```diff
+-apiVersion: apps/v1
+-kind: Deployment
+-metadata:
+-  name: hoge
+```
+
+</details>
+"
+        .to_string();
         assert_eq!(actual, expected);
     }
 
     #[test]
-    fn test_new_with_no_changes() {
-        let results: HashMap<String, String> = HashMap::new();
-        let link = "http://example.com".to_string();
-        let target = Some("sample app".to_string());
-        let t = Template::new(results, link, target);
-        assert_eq!(t.is_no_changes, true);
-    }
+    fn test_render_for_configured_kinds() {
+        let data = HashMap::from([(
+            "apps.v1.Deployment.default.hoge".to_string(),
+            "-  image: hoge
++  image: fuga"
+                .to_string(),
+        )]);
+        let template = Template::new(
+            data,
+            "https://example.com".to_string(),
+            Some("target".to_string()),
+        );
+        let actual = template.render().unwrap();
+        let expected = "## Plan result (target)
+[CI link]( https://example.com )
 
-    #[test]
-    fn test_new_with_some_changes() {
-        let mut results: HashMap<String, String> = HashMap::new();
-        results.insert("sample".to_string(), "change content".to_string());
-        let link = "http://example.com".to_string();
-        let target = Some("sample app".to_string());
-        let t = Template::new(results, link, target);
-        assert_eq!(t.is_no_changes, false);
+## configured
+* apps.v1.Deployment.default.hoge
+
+<details><summary>Details (Click me)</summary>
+
+### apps.v1.Deployment.default.hoge
+```diff
+-  image: hoge
++  image: fuga
+```
+
+</details>
+"
+        .to_string();
+        assert_eq!(actual, expected);
     }
 
     #[test]
@@ -174,15 +285,15 @@ mod tests {
 
     #[test]
     fn test_render_body_with_no_changes() {
-        let reg = Handlebars::new();
-        let mut data = HashMap::new();
-        data.insert("is_no_changes".to_string(), "true".to_string());
-        data.insert("link".to_string(), "http://example.com".to_string());
-        let actual = reg
-            .render_template(Template::DEFAULT_BUILD_BODY_TEMPLATE, &data)
-            .unwrap();
-        let expected = "
-[CI link]( http://example.com )
+        let data: HashMap<String, String> = HashMap::new();
+        let template = Template::new(
+            data,
+            "https://example.com".to_string(),
+            Some("target".to_string()),
+        );
+        let actual = template.render().unwrap();
+        let expected = "## Plan result (target)
+[CI link]( https://example.com )
 
 ```
 No changes. Kubernetes configurations are up-to-date.
@@ -193,35 +304,12 @@ No changes. Kubernetes configurations are up-to-date.
     }
 
     #[test]
-    fn test_render_body_with_changes() {
-        let reg = Handlebars::new();
-        let mut data = HashMap::new();
-        data.insert("link".to_string(), "http://example.com".to_string());
-        data.insert("link".to_string(), "http://example.com".to_string());
-        let actual = reg
-            .render_template(Template::DEFAULT_BUILD_BODY_TEMPLATE, &data)
-            .unwrap();
-        let expected = "
-[CI link]( http://example.com )
-
-* updated
-
-
-<details><summary>Details (Click me)</summary>
-
-
-
-</details>
-"
-        .to_string();
-        assert_eq!(actual, expected);
-    }
-
-    #[test]
     fn test_is_same_build_with_target_none() {
         let template = Template {
             target: None,
-            changed_kinds: "test".to_string(),
+            created_kinds: Vec::new(),
+            pruned_kinds: Vec::new(),
+            configured_kinds: Vec::new(),
             details: "test".to_string(),
             link: "http://example.com".to_string(),
             is_no_changes: false,
@@ -233,7 +321,9 @@ No changes. Kubernetes configurations are up-to-date.
     fn test_is_same_build_with_same_build() {
         let template = Template {
             target: Some("test".to_string()),
-            changed_kinds: "test".to_string(),
+            created_kinds: Vec::new(),
+            pruned_kinds: Vec::new(),
+            configured_kinds: Vec::new(),
             details: "test".to_string(),
             link: "http://example.com".to_string(),
             is_no_changes: false,
@@ -245,7 +335,9 @@ No changes. Kubernetes configurations are up-to-date.
     fn test_is_same_build_with_different_build() {
         let template = Template {
             target: Some("test1".to_string()),
-            changed_kinds: "test".to_string(),
+            created_kinds: Vec::new(),
+            pruned_kinds: Vec::new(),
+            configured_kinds: Vec::new(),
             details: "test".to_string(),
             link: "http://example.com".to_string(),
             is_no_changes: false,
