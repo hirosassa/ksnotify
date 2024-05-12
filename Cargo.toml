@@ -3,12 +3,12 @@ name = "ksnotify"
 authors = ["hirosassa <hiro.sassa@gmail.com>"]
 description = "A CLI command to parse kubectl diff result and notify it to GitLab"
 version = "0.1.8"
-edition = "2018"
+edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
 gitlab = "0.1504.0"
-handlebars = "4.1.3"
+handlebars = "4.5.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 serde_yaml = "0.9"
