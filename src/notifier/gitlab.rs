@@ -4,20 +4,27 @@ use crate::template::Template;
 use anyhow::{Context, Result};
 use gitlab::api::projects::merge_requests::notes::{EditMergeRequestNote, MergeRequestNotes};
 use gitlab::api::{self, projects::merge_requests::notes::CreateMergeRequestNote, Query};
-use gitlab::types::Note;
 use gitlab::Gitlab;
 use log::info;
+use serde::Deserialize;
 use std::env;
 
 use super::Notifiable;
 
 const ENV_GITLAB_TOKEN: &str = "KSNOTIFY_GITLAB_TOKEN";
+const LIST_NOTES_LIMIT: usize = 300;
 
 #[derive(Debug)]
 pub struct GitlabNotifier {
     client: Gitlab,
     project: u64,
     ci: CI,
+}
+
+#[derive(Debug, Deserialize)]
+struct Note {
+    id: u64,
+    body: String,
 }
 
 impl GitlabNotifier {
@@ -55,7 +62,9 @@ impl GitlabNotifier {
             .merge_request(*self.ci.merge_request().number())
             .build()
             .map_err(anyhow::Error::msg)?;
-        let comments: Vec<Note> = endpoint.query(&self.client)?;
+        let comments: Vec<Note> = api::paged(endpoint, api::Pagination::Limit(LIST_NOTES_LIMIT))
+            .query(&self.client)
+            .map_err(anyhow::Error::msg)?;
 
         for comment in comments {
             if template.is_same_build(&comment.body)? {
@@ -78,7 +87,7 @@ impl Notifiable for GitlabNotifier {
                 let note = EditMergeRequestNote::builder()
                     .project(self.project)
                     .merge_request(*self.ci.merge_request().number())
-                    .note(same_build_comment.id.value())
+                    .note(same_build_comment.id)
                     .body(template.render()?)
                     .build()
                     .map_err(anyhow::Error::msg)?;
