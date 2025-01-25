@@ -17,5 +17,19 @@ ksnotify:
     - chmod a+x /usr/bin/ksnotify
   script:
     - cd "${SKAFFOLD_DIR}"
-    - skaffold render -p ${ENV} | kubectl diff -f - 2> /dev/null | ksnotify --notifier gitlab --ci gitlab --suppress-skaffold || exit_code=$?
-    # `exit_code=$?` is for preventing job failure due to kubectl's retrurning exit 1 when there's the diff
+    # Set digest-source to 'none' to use tags directly from the Kubernetes manifests, that is, use the build result of kustomize
+    #   ref. https://skaffold.dev/docs/references/cli/#skaffold-render
+    - skaffold render -p ${ENV} --digest-source='none' --output=skaffold_render.yaml
+    - cat skaffold_render.yaml | kubectl diff -f - > kube.diff && exit_code=0 || exit_code=$?
+    # the exit status of kubectl diff: 0: no diff, 1: diff exists, 1>: failed with an error
+    #   ref. https://kubernetes.io/docs/reference/kubectl/generated/kubectl_diff/#synopsis
+    - if [ $exit_code -gt 1 ]; then  # so exit status 1 is ok because there just are some difference
+    -   echo "Error while detecting diff. Examine the output of skaffold render"
+    -   exit $exit_code
+    - fi
+    - cat kube.diff | ksnotify --notifier gitlab --ci gitlab --suppress-skaffold
+  artifacts:
+    path:
+      - ${SKAFFOLD_DIR}/skaffold_render.yaml
+      - ${SKAFFOLD_DIR}/kube.diff
+    when: always
