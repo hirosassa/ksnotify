@@ -1,9 +1,12 @@
-use crate::ci::CI;
+use crate::ci::{MergeRequest, CI};
 use crate::template::Template;
 
 use anyhow::{Context, Result};
-use gitlab::api::projects::merge_requests::notes::{EditMergeRequestNote, MergeRequestNotes};
-use gitlab::api::{self, projects::merge_requests::notes::CreateMergeRequestNote, Query};
+use gitlab::api::projects::merge_requests::notes::{
+    CreateMergeRequestNote, EditMergeRequestNote, MergeRequestNotes,
+};
+use gitlab::api::projects::repository::commits::MergeRequests;
+use gitlab::api::{self, Query};
 use gitlab::Gitlab;
 use log::info;
 use serde::Deserialize;
@@ -13,6 +16,7 @@ use super::Notifiable;
 
 const ENV_GITLAB_TOKEN: &str = "KSNOTIFY_GITLAB_TOKEN";
 const LIST_NOTES_LIMIT: usize = 300;
+const LIST_MERGE_REQUESTS_LIMIT: usize = 100;
 
 #[derive(Debug)]
 pub struct GitlabNotifier {
@@ -25,6 +29,11 @@ pub struct GitlabNotifier {
 struct Note {
     id: u64,
     body: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct GitLabMergeRequest {
+    iid: u64,
 }
 
 impl GitlabNotifier {
@@ -59,7 +68,7 @@ impl GitlabNotifier {
         info!("retrieve same build comment");
         let endpoint = MergeRequestNotes::builder()
             .project(self.project)
-            .merge_request(*self.ci.merge_request().number())
+            .merge_request(self.retrieve_merge_request_iid_with_fallback(self.ci.merge_request())?)
             .build()
             .map_err(anyhow::Error::msg)?;
         let comments: Vec<Note> = api::paged(endpoint, api::Pagination::Limit(LIST_NOTES_LIMIT))
@@ -72,6 +81,28 @@ impl GitlabNotifier {
             }
         }
         Ok(None)
+    }
+
+    /// Retrieve merge request IID with fallback.
+    /// If merge request number is not provided, it will retrieve the merge request IID by commit SHA.
+    fn retrieve_merge_request_iid_with_fallback(&self, mr: &MergeRequest) -> Result<u64> {
+        if let Some(number) = mr.number {
+            return Ok(number);
+        }
+
+        let endpoint = MergeRequests::builder()
+            .project(self.project)
+            .sha(mr.commit_sha.clone())
+            .build()
+            .map_err(anyhow::Error::msg)?;
+        let mrs: Vec<GitLabMergeRequest> =
+            api::paged(endpoint, api::Pagination::Limit(LIST_MERGE_REQUESTS_LIMIT))
+                .query(&self.client)
+                .map_err(anyhow::Error::msg)?;
+        if mrs.is_empty() {
+            return Err(anyhow::anyhow!("no merge request found"));
+        }
+        Ok(mrs[0].iid)
     }
 }
 
@@ -86,7 +117,9 @@ impl Notifiable for GitlabNotifier {
             if let Some(same_build_comment) = same_build_comment {
                 let note = EditMergeRequestNote::builder()
                     .project(self.project)
-                    .merge_request(*self.ci.merge_request().number())
+                    .merge_request(
+                        self.retrieve_merge_request_iid_with_fallback(self.ci.merge_request())?,
+                    )
                     .note(same_build_comment.id)
                     .body(template.render()?)
                     .build()
@@ -99,7 +132,7 @@ impl Notifiable for GitlabNotifier {
         // create new comment
         let note = CreateMergeRequestNote::builder()
             .project(self.project)
-            .merge_request(*self.ci.merge_request().number())
+            .merge_request(self.retrieve_merge_request_iid_with_fallback(self.ci.merge_request())?)
             .body(template.render()?)
             .build()
             .map_err(anyhow::Error::msg)?;
