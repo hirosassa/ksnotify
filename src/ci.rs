@@ -29,10 +29,19 @@ impl CI {
                 // todo: make this as function
                 let job_url = env::var("CI_JOB_URL")
                     .with_context(|| "CI_JOB_URL is not provided.".to_string())?;
-                let number = env::var("CI_MERGE_REQUEST_IID")
-                    .with_context(|| "CI_MERGE_REQUEST_IID is not provided".to_string())?
-                    .parse()?;
-                let merge_request = MergeRequest { number };
+
+                // CI_MERGE_REQUEST_IID is optional, but should be u64.
+                let number = env::var("CI_MERGE_REQUEST_IID").ok();
+                let number = if number.is_some() {
+                    Some(number.unwrap().parse::<u64>()?)
+                } else {
+                    None
+                };
+
+                let commit_sha = env::var("CI_COMMIT_SHA")
+                    .with_context(|| "CI_COMMIT_SHA is not provided.".to_string())?;
+
+                let merge_request = MergeRequest { number, commit_sha };
                 Ok(Self {
                     job_url,
                     merge_request,
@@ -40,7 +49,10 @@ impl CI {
             }
             CIKind::Local => Ok(Self {
                 job_url: "".to_string(),
-                merge_request: MergeRequest { number: 1 },
+                merge_request: MergeRequest {
+                    number: None,
+                    commit_sha: "".to_string(),
+                },
             }),
         }
     }
@@ -56,11 +68,46 @@ impl CI {
 
 #[derive(Clone, Debug)]
 pub struct MergeRequest {
-    number: u64,
+    pub number: Option<u64>,
+    pub commit_sha: String,
 }
 
-impl MergeRequest {
-    pub const fn number(&self) -> &u64 {
-        &self.number
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::env;
+
+    #[test]
+    fn test_ci_new() {
+        env::set_var("CI_JOB_URL", "https://gitlab.com/ksnotify");
+        env::set_var("CI_MERGE_REQUEST_IID", "123");
+        env::set_var("CI_COMMIT_SHA", "abcdefg");
+        let ci = CI::new(CIKind::GitLab).unwrap();
+        assert_eq!(ci.job_url(), "https://gitlab.com/ksnotify");
+        assert_eq!(ci.merge_request().number, Some(123));
+        assert_eq!(ci.merge_request().commit_sha, "abcdefg");
+        env::remove_var("CI_COMMIT_SHA");
+        env::remove_var("CI_MERGE_REQUEST_IID");
+        env::remove_var("CI_JOB_URL");
+    }
+
+    #[test]
+    fn test_ci_new_without_merge_request() {
+        env::set_var("CI_JOB_URL", "https://gitlab.com/ksnotify");
+        env::set_var("CI_COMMIT_SHA", "abcdefg");
+        let ci = CI::new(CIKind::GitLab).unwrap();
+        assert_eq!(ci.job_url(), "https://gitlab.com/ksnotify");
+        assert_eq!(ci.merge_request().number, None);
+        assert_eq!(ci.merge_request().commit_sha, "abcdefg");
+        env::remove_var("CI_COMMIT_SHA");
+        env::remove_var("CI_JOB_URL");
+    }
+
+    #[test]
+    fn test_ci_new_without_ci() {
+        let ci = CI::new(CIKind::Local).unwrap();
+        assert_eq!(ci.job_url(), "");
+        assert_eq!(ci.merge_request().number, None);
+        assert_eq!(ci.merge_request().commit_sha, "");
     }
 }
