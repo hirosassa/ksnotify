@@ -23,3 +23,8 @@ clap = { version = "4.0.18", features = ["derive"] }
 clap-verbosity-flag = "2.0.0"
 log = "0.4"
 env_logger = "0.9"
+octocrab = "0.44.0"
+smol = "2.0.2"
+
+[dev-dependencies]
+temp-env = "0.3.6"

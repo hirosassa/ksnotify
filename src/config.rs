@@ -14,6 +14,8 @@ use strum_macros::{Display, EnumIter};
 enum NotifierKind {
     #[strum(serialize = "gitlab")]
     GitLab,
+    #[strum(serialize = "github")]
+    GitHub,
     #[strum(serialize = "slack")]
     Slack,
 }

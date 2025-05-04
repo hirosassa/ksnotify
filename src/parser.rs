@@ -163,7 +163,7 @@ diff -u -N /var/folders/fl/blahblah/v1.Service.test.test-app2 /var/folders/fl/bl
         let actual = parser.parse(diff).unwrap();
         assert_eq!(actual.kind_result.len(), 2);
 
-        let keys = vec!["v1.Service.test.test-app1", "v1.Service.test.test-app2"];
+        let keys = ["v1.Service.test.test-app1", "v1.Service.test.test-app2"];
         let values = vec!["- ABCDE\n+ FGHIJ", "- 12345\n+ 67890"];
         for (k, v) in keys.iter().zip(values) {
             assert_eq!(actual.kind_result[&k.to_string()], v.to_string())
@@ -185,7 +185,7 @@ diff -u -N /var/folders/fl/blahblah/v1.Service.test.test-app2 /var/folders/fl/bl
 
         let parser = self::DiffParser::new(false, Vec::new()).unwrap();
         let actual = parser.parse_kinds(diff);
-        let expected = vec!["v1.Service.test.test-app1", "v1.Service.test.test-app2"];
+        let expected = ["v1.Service.test.test-app1", "v1.Service.test.test-app2"];
         assert_eq!(&actual[..], &expected[..]);
     }
 
@@ -203,7 +203,7 @@ diff -u -N /var/folders/fl/blahblah/v1.Service.test.test-app2 /var/folders/fl/bl
 67890";
         let parser = self::DiffParser::new(false, Vec::new()).unwrap();
         let actual = parser.parse_diff(diff);
-        let expected = vec!["ABCDE\nFGHIJ", "12345\n67890"];
+        let expected = ["ABCDE\nFGHIJ", "12345\n67890"];
         assert_eq!(&actual[..], &expected[..]);
     }
 
