@@ -62,9 +62,11 @@ impl CI {
                     .next()
                     .unwrap()
                     .parse()?;
+                let commit_sha = env::var("GITHUB_SHA")
+                    .with_context(|| "GITHUB_SHA is not provided.".to_string())?;
 
                 let job_url = format!("github.com/{}/actions/runs/{}", repository, run_id);
-                let merge_request = MergeRequest { number };
+                let merge_request = MergeRequest { number, commit_sha };
                 Ok(Self {
                     job_url,
                     merge_request,
