@@ -1,3 +1,4 @@
+pub mod github;
 pub mod gitlab;
 use crate::template;
 
@@ -9,6 +10,8 @@ use strum_macros::EnumString;
 pub enum NotifierKind {
     #[strum(serialize = "gitlab")]
     GitLab,
+    #[strum(serialize = "github")]
+    GitHub,
     #[strum(serialize = "slack")]
     Slack,
 }

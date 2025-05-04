@@ -79,11 +79,22 @@ fn run() -> Result<()> {
     let ci =
         ci::CI::new(config.ci).with_context(|| format!("failed to create CI: {:?}", config.ci))?;
     let notifier_kind = config.notifier;
-    let notifier = match notifier_kind {
-        notifier::NotifierKind::GitLab => notifier::gitlab::GitlabNotifier::new(&ci),
+
+    let notifier: Box<dyn Notifiable> = match notifier_kind {
+        notifier::NotifierKind::GitLab => {
+            (Box::new(
+                notifier::gitlab::GitlabNotifier::new(&ci)
+                    .with_context(|| format!("failed to create GitLab notifier: {:?}", ci))?,
+            )) as _
+        }
+        notifier::NotifierKind::GitHub => {
+            (Box::new(
+                notifier::github::GithubNotifier::new()
+                    .with_context(|| format!("failed to create GitHub notifier: {:?}", ci))?,
+            )) as _
+        }
         notifier::NotifierKind::Slack => todo!(),
-    }
-    .with_context(|| format!("failed to create notifier: {:?}", ci))?;
+    };
 
     let template = process(&config, Some(ci.job_url().to_string()), cli.target)?;
     notifier

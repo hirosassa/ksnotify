@@ -10,6 +10,10 @@ pub enum CIKind {
     #[strum(serialize = "gitlab")]
     GitLab,
 
+    /// ksnotify is running on GitHub Actions.
+    #[strum(serialize = "github")]
+    GitHub,
+
     /// ksnotify is running on Local PC (for debug).
     #[strum(serialize = "local")]
     Local,
@@ -32,6 +36,25 @@ impl CI {
                 let number = env::var("CI_MERGE_REQUEST_IID")
                     .with_context(|| "CI_MERGE_REQUEST_IID is not provided".to_string())?
                     .parse()?;
+                let merge_request = MergeRequest { number };
+                Ok(Self {
+                    job_url,
+                    merge_request,
+                })
+            }
+            CIKind::GitHub => {
+                let repository = env::var("GITHUB_REPOSITORY")
+                    .with_context(|| "GITHUB_REPOSITORY is not provided.".to_string())?;
+                let run_id = env::var("GITHUB_RUN_ID")
+                    .with_context(|| "GITHUB_RUN_ID is not provided.".to_string())?;
+                let number = env::var("GITHUB_REF_NAME")
+                    .with_context(|| "GITHUB_REF_NAME is not provided.".to_string())?
+                    .split('/')
+                    .next()
+                    .unwrap()
+                    .parse()?;
+
+                let job_url = format!("github.com/{}/actions/runs/{}", repository, run_id);
                 let merge_request = MergeRequest { number };
                 Ok(Self {
                     job_url,
