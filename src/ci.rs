@@ -56,16 +56,16 @@ impl CI {
                     .with_context(|| "GITHUB_REPOSITORY is not provided.".to_string())?;
                 let run_id = env::var("GITHUB_RUN_ID")
                     .with_context(|| "GITHUB_RUN_ID is not provided.".to_string())?;
-                let number = env::var("GITHUB_REF_NAME")
-                    .with_context(|| "GITHUB_REF_NAME is not provided.".to_string())?
-                    .split('/')
-                    .next()
-                    .unwrap()
-                    .parse()?;
+                let number = env::var("GITHUB_REF_NAME").ok();
+                let number = if number.is_some() {
+                    Some(number.unwrap().split("/").next().unwrap().parse::<u64>()?)
+                } else {
+                    None
+                };
                 let commit_sha = env::var("GITHUB_SHA")
                     .with_context(|| "GITHUB_SHA is not provided.".to_string())?;
 
-                let job_url = format!("github.com/{}/actions/runs/{}", repository, run_id);
+                let job_url = format!("https://github.com/{}/actions/runs/{}", repository, run_id);
                 let merge_request = MergeRequest { number, commit_sha };
                 Ok(Self {
                     job_url,
@@ -100,32 +100,59 @@ pub struct MergeRequest {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::env;
 
     #[test]
-    fn test_ci_new() {
-        env::set_var("CI_JOB_URL", "https://gitlab.com/ksnotify");
-        env::set_var("CI_MERGE_REQUEST_IID", "123");
-        env::set_var("CI_COMMIT_SHA", "abcdefg");
-        let ci = CI::new(CIKind::GitLab).unwrap();
-        assert_eq!(ci.job_url(), "https://gitlab.com/ksnotify");
-        assert_eq!(ci.merge_request().number, Some(123));
-        assert_eq!(ci.merge_request().commit_sha, "abcdefg");
-        env::remove_var("CI_COMMIT_SHA");
-        env::remove_var("CI_MERGE_REQUEST_IID");
-        env::remove_var("CI_JOB_URL");
+    fn test_ci_new_gitlab() {
+        temp_env::with_vars(
+            [
+                ("CI_JOB_URL", Some("https://gitlab.com/ksnotify")),
+                ("CI_MERGE_REQUEST_IID", Some("123")),
+                ("CI_COMMIT_SHA", Some("abcdefg")),
+            ],
+            || {
+                let ci = CI::new(CIKind::GitLab).unwrap();
+                assert_eq!(ci.job_url(), "https://gitlab.com/ksnotify");
+                assert_eq!(ci.merge_request().number, Some(123));
+                assert_eq!(ci.merge_request().commit_sha, "abcdefg");
+            },
+        );
     }
 
     #[test]
-    fn test_ci_new_without_merge_request() {
-        env::set_var("CI_JOB_URL", "https://gitlab.com/ksnotify");
-        env::set_var("CI_COMMIT_SHA", "abcdefg");
-        let ci = CI::new(CIKind::GitLab).unwrap();
-        assert_eq!(ci.job_url(), "https://gitlab.com/ksnotify");
-        assert_eq!(ci.merge_request().number, None);
-        assert_eq!(ci.merge_request().commit_sha, "abcdefg");
-        env::remove_var("CI_COMMIT_SHA");
-        env::remove_var("CI_JOB_URL");
+    fn test_ci_new_gitlab_without_merge_request() {
+        temp_env::with_vars(
+            [
+                ("CI_JOB_URL", Some("https://gitlab.com/ksnotify")),
+                ("CI_COMMIT_SHA", Some("abcdefg")),
+            ],
+            || {
+                let ci = CI::new(CIKind::GitLab).unwrap();
+                assert_eq!(ci.job_url(), "https://gitlab.com/ksnotify");
+                assert_eq!(ci.merge_request().number, None);
+                assert_eq!(ci.merge_request().commit_sha, "abcdefg");
+            },
+        );
+    }
+
+    #[test]
+    fn test_ci_new_github() {
+        temp_env::with_vars(
+            [
+                ("GITHUB_REPOSITORY", Some("hirosassa/ksnotify")),
+                ("GITHUB_RUN_ID", Some("123")),
+                ("GITHUB_REF_NAME", Some("123/merge")),
+                ("GITHUB_SHA", Some("abcdefg")),
+            ],
+            || {
+                let ci = CI::new(CIKind::GitHub).unwrap();
+                assert_eq!(
+                    ci.job_url(),
+                    "https://github.com/hirosassa/ksnotify/actions/runs/123"
+                );
+                assert_eq!(ci.merge_request().number, Some(123));
+                assert_eq!(ci.merge_request().commit_sha, "abcdefg");
+            },
+        );
     }
 
     #[test]
