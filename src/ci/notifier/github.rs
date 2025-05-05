@@ -72,7 +72,7 @@ impl GithubNotifier {
 
     async fn post_comment(&self, template: &Template, patch: bool) -> Result<()> {
         if patch {
-            if let Some(same_build_comment) = self.retrive_same_build_comment(template).await? {
+            if let Some(same_build_comment) = self.retrieve_same_build_comment(template).await? {
                 let _ = self
                     .update_existing_comment(template, same_build_comment)
                     .await;
@@ -109,7 +109,7 @@ impl GithubNotifier {
         Ok(())
     }
 
-    async fn retrive_same_build_comment(&self, template: &Template) -> Result<Option<Comment>> {
+    async fn retrieve_same_build_comment(&self, template: &Template) -> Result<Option<Comment>> {
         info!("retrieve same build comment");
 
         let pr_number = if self.pull_request.number.is_some() {

@@ -64,10 +64,7 @@ impl GitlabNotifier {
             None
         };
         let commit_sha = env::var("CI_COMMIT_SHA")?;
-        Ok(MergeRequest {
-            number,
-            commit_sha,
-        })
+        Ok(MergeRequest { number, commit_sha })
     }
 
     fn get_job_url() -> Result<String> {
@@ -86,7 +83,7 @@ impl GitlabNotifier {
         Ok(env::var("CI_PROJECT_ID")?.parse::<u64>()?)
     }
 
-    fn retrive_same_build_comment(&self, template: &Template) -> Result<Option<Note>> {
+    fn retrieve_same_build_comment(&self, template: &Template) -> Result<Option<Note>> {
         info!("retrieve same build comment");
         let endpoint = MergeRequestNotes::builder()
             .project(self.project)
@@ -130,14 +127,13 @@ impl GitlabNotifier {
     const fn merge_request(&self) -> &MergeRequest {
         &self.merge_request
     }
-
 }
 
 impl Notifiable for GitlabNotifier {
     fn notify(&self, template: Template, patch: bool) -> Result<()> {
         info!("notify to GitLab");
 
-        let same_build_comment = self.retrive_same_build_comment(&template)?;
+        let same_build_comment = self.retrieve_same_build_comment(&template)?;
 
         // update comment if existed
         if patch {
@@ -178,24 +174,18 @@ mod tests {
 
     #[test]
     fn test_get_project() {
-        temp_env::with_vars(
-            [("CI_PROJECT_ID", Some("123"))],
-            || {
-                let project = GitlabNotifier::get_project().unwrap();
-                assert_eq!(project, 123);
-            }
-        );
+        temp_env::with_vars([("CI_PROJECT_ID", Some("123"))], || {
+            let project = GitlabNotifier::get_project().unwrap();
+            assert_eq!(project, 123);
+        });
     }
 
     #[test]
     fn test_get_job_url() {
-        temp_env::with_var(
-            "CI_JOB_URL", Some("https://example.com/ksnotify"),
-            || {
-                let job_url = GitlabNotifier::get_job_url().unwrap();
-                assert_eq!(job_url, "https://example.com/ksnotify");
-            },
-        );
+        temp_env::with_var("CI_JOB_URL", Some("https://example.com/ksnotify"), || {
+            let job_url = GitlabNotifier::get_job_url().unwrap();
+            assert_eq!(job_url, "https://example.com/ksnotify");
+        });
     }
 
     #[test]
@@ -209,7 +199,7 @@ mod tests {
                 let merge_request = GitlabNotifier::get_merge_request().unwrap();
                 assert_eq!(merge_request.number, Some(123));
                 assert_eq!(merge_request.commit_sha, "abcdefg");
-            }
+            },
         );
     }
 
@@ -224,7 +214,7 @@ mod tests {
                 let merge_request = GitlabNotifier::get_merge_request().unwrap();
                 assert_eq!(merge_request.number, None);
                 assert_eq!(merge_request.commit_sha, "abcdefg");
-            }
+            },
         );
     }
 }
