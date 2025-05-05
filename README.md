@@ -83,19 +83,19 @@ ref: [Permissions required for fine-grained personal access tokens](https://docs
 Basic usage is as follows:
 
 ```console
-skaffold render -p dev | kubectl diff -f - 2> /dev/null | | ksnotify --notifier gitlab --ci gitlab
+skaffold render -p dev | kubectl diff -f - 2> /dev/null | | ksnotify --ci gitlab
 ```
 
 If you want to update existing comment instead of create a new comment, you should add `--patch` flag like
 
 ```console
-skaffold render -p dev | kubectl diff -f - 2> /dev/null | | ksnotify --notifier gitlab --ci gitlab --patch
+skaffold render -p dev | kubectl diff -f - 2> /dev/null | | ksnotify --ci gitlab --patch
 ```
 
 To suppress `skaffold` labels like `skaffold.dev/run-id: 1234` automatically added by `skaffold`, you should add `--suppress-skaffold` flag like
 
 ```console
-skaffold render -p dev | kubectl diff -f - 2> /dev/null | | ksnotify --notifier gitlab --ci gitlab --suppress-skaffold
+skaffold render -p dev | kubectl diff -f - 2> /dev/null | | ksnotify --ci gitlab --suppress-skaffold
 ```
 
 The concrete example of GitLab CI configuration is shown in [example](https://github.com/hirosassa/ksnotify/tree/main/example).
@@ -107,7 +107,7 @@ To run `ksnotify` locally, use local option for debug.
 For local mode, `ksnotify` just renders contents on stdout.
 
 ```console
-skaffold render -p dev | kubectl diff -f - 2> /dev/null | path/to/ksnotify --ci local --notifier gitlab --suppress-skaffold
+skaffold render -p dev | kubectl diff -f - 2> /dev/null | path/to/ksnotify --ci local --suppress-skaffold
 
 > ## Plan result
 > [CI link](  )
