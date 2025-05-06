@@ -73,7 +73,7 @@ fn run() -> Result<()> {
     let ci =
         ci::CI::new(config.ci).with_context(|| format!("failed to create CI: {:?}", config.ci))?;
 
-    let template = process(&config, Some(ci.job_url().to_string()), cli.target)?;
+    let template = process(&config, Some(ci.job_url()), cli.target)?;
     ci.notifier
         .notify(template, config.patch)
         .with_context(|| "failed to notify".to_string())?;

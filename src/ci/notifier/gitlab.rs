@@ -163,8 +163,8 @@ impl Notifiable for GitlabNotifier {
         Ok(())
     }
 
-    fn job_url(&self) -> &String {
-        &self.job_url
+    fn job_url(&self) -> String {
+        self.job_url.clone()
     }
 }
 

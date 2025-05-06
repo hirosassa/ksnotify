@@ -49,7 +49,7 @@ impl CI {
         }
     }
 
-    pub fn job_url(&self) -> &String {
+    pub fn job_url(&self) -> String {
         self.notifier.job_url()
     }
 }
