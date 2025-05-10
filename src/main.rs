@@ -75,7 +75,7 @@ fn run() -> Result<()> {
 
     let template = process(&config, Some(ci.job_url()), cli.target)?;
     ci.notifier
-        .notify(template, config.patch)
+        .notify(&template, config.patch)
         .with_context(|| "failed to notify".to_string())?;
     Ok(())
 }

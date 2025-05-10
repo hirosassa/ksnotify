@@ -130,10 +130,10 @@ impl GitlabNotifier {
 }
 
 impl Notifiable for GitlabNotifier {
-    fn notify(&self, template: Template, patch: bool) -> Result<()> {
+    fn notify(&self, template: &Template, patch: bool) -> Result<()> {
         info!("notify to GitLab");
 
-        let same_build_comment = self.retrieve_same_build_comment(&template)?;
+        let same_build_comment = self.retrieve_same_build_comment(template)?;
 
         // update comment if existed
         if patch {

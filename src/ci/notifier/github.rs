@@ -141,9 +141,9 @@ impl GithubNotifier {
 }
 
 impl Notifiable for GithubNotifier {
-    fn notify(&self, template: Template, patch: bool) -> Result<()> {
+    fn notify(&self, template: &Template, patch: bool) -> Result<()> {
         info!("notify to GitHub");
-        smol::block_on(self.post_comment(&template, patch))?;
+        smol::block_on(self.post_comment(template, patch))?;
         Ok(())
     }
 
