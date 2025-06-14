@@ -140,13 +140,16 @@ impl GithubNotifier {
             .client
             .issues(&self.owner, &self.repo)
             .list_comments(pr_number)
-            .per_page(100) // 100 comments per page (GitHub API limitation)
-            .page(3u32) // 3 pages * 100 comments = 300 comments
             .send()
             .await?;
+        if comments.items.is_empty() {
+            debug!("no comments found in the PR");
+            return Ok(None);
+        }
 
-        for comment in comments {
+        for comment in comments.items {
             if let Some(body) = comment.body.clone() {
+                debug!("checking comment: {}", body);
                 if template.is_same_build(&body)? {
                     return Ok(Some(comment));
                 }
