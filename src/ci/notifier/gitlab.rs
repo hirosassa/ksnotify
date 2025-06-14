@@ -2,12 +2,12 @@ use crate::ci::MergeRequest;
 use crate::template::Template;
 
 use anyhow::Result;
+use gitlab::Gitlab;
 use gitlab::api::projects::merge_requests::notes::{
     CreateMergeRequestNote, EditMergeRequestNote, MergeRequestNotes,
 };
 use gitlab::api::projects::repository::commits::MergeRequests;
 use gitlab::api::{self, Query};
-use gitlab::Gitlab;
 use log::info;
 use serde::Deserialize;
 use std::env;
