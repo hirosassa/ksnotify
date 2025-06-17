@@ -1,13 +1,13 @@
-use crate::ci::{MergeRequest, CI};
+use crate::ci::MergeRequest;
 use crate::template::Template;
 
-use anyhow::{Context, Result};
+use anyhow::Result;
+use gitlab::Gitlab;
 use gitlab::api::projects::merge_requests::notes::{
     CreateMergeRequestNote, EditMergeRequestNote, MergeRequestNotes,
 };
 use gitlab::api::projects::repository::commits::MergeRequests;
 use gitlab::api::{self, Query};
-use gitlab::Gitlab;
 use log::info;
 use serde::Deserialize;
 use std::env;
@@ -22,7 +22,8 @@ const LIST_MERGE_REQUESTS_LIMIT: usize = 100;
 pub struct GitlabNotifier {
     client: Gitlab,
     project: u64,
-    ci: CI,
+    merge_request: MergeRequest,
+    job_url: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -37,19 +38,37 @@ struct GitLabMergeRequest {
 }
 
 impl GitlabNotifier {
-    pub fn new(ci: &CI) -> Result<Self> {
+    pub fn new() -> Result<Self> {
         info!("create GitLab client");
 
         let base_url = Self::get_base_url()?;
         let token = Self::get_token()?;
-        let client =
-            Gitlab::new(base_url, token).with_context(|| "failed to create client".to_string())?;
+
+        let client = Gitlab::new(base_url, token)?;
         let project = Self::get_project()?;
+        let merge_request = Self::get_merge_request()?;
+        let job_url = Self::get_job_url()?;
         Ok(Self {
             client,
             project,
-            ci: ci.clone(),
+            merge_request,
+            job_url,
         })
+    }
+
+    fn get_merge_request() -> Result<MergeRequest> {
+        let number = env::var("CI_MERGE_REQUEST_IID").ok();
+        let number = if number.is_some() {
+            Some(number.unwrap().parse::<u64>()?)
+        } else {
+            None
+        };
+        let commit_sha = env::var("CI_COMMIT_SHA")?;
+        Ok(MergeRequest { number, commit_sha })
+    }
+
+    fn get_job_url() -> Result<String> {
+        Ok(env::var("CI_JOB_URL")?)
     }
 
     fn get_token() -> Result<String> {
@@ -64,11 +83,11 @@ impl GitlabNotifier {
         Ok(env::var("CI_PROJECT_ID")?.parse::<u64>()?)
     }
 
-    fn retrive_same_build_comment(&self, template: &Template) -> Result<Option<Note>> {
+    fn retrieve_same_build_comment(&self, template: &Template) -> Result<Option<Note>> {
         info!("retrieve same build comment");
         let endpoint = MergeRequestNotes::builder()
             .project(self.project)
-            .merge_request(self.retrieve_merge_request_iid_with_fallback(self.ci.merge_request())?)
+            .merge_request(self.retrieve_merge_request_iid_with_fallback(self.merge_request())?)
             .build()
             .map_err(anyhow::Error::msg)?;
         let comments: Vec<Note> = api::paged(endpoint, api::Pagination::Limit(LIST_NOTES_LIMIT))
@@ -104,13 +123,17 @@ impl GitlabNotifier {
         }
         Ok(mrs[0].iid)
     }
+
+    const fn merge_request(&self) -> &MergeRequest {
+        &self.merge_request
+    }
 }
 
 impl Notifiable for GitlabNotifier {
-    fn notify(&self, template: Template, patch: bool) -> Result<()> {
+    fn notify(&self, template: &Template, patch: bool) -> Result<()> {
         info!("notify to GitLab");
 
-        let same_build_comment = self.retrive_same_build_comment(&template)?;
+        let same_build_comment = self.retrieve_same_build_comment(template)?;
 
         // update comment if existed
         if patch {
@@ -118,7 +141,7 @@ impl Notifiable for GitlabNotifier {
                 let note = EditMergeRequestNote::builder()
                     .project(self.project)
                     .merge_request(
-                        self.retrieve_merge_request_iid_with_fallback(self.ci.merge_request())?,
+                        self.retrieve_merge_request_iid_with_fallback(self.merge_request())?,
                     )
                     .note(same_build_comment.id)
                     .body(template.render()?)
@@ -132,11 +155,66 @@ impl Notifiable for GitlabNotifier {
         // create new comment
         let note = CreateMergeRequestNote::builder()
             .project(self.project)
-            .merge_request(self.retrieve_merge_request_iid_with_fallback(self.ci.merge_request())?)
+            .merge_request(self.retrieve_merge_request_iid_with_fallback(self.merge_request())?)
             .body(template.render()?)
             .build()
             .map_err(anyhow::Error::msg)?;
         api::ignore(note).query(&self.client)?;
         Ok(())
+    }
+
+    fn job_url(&self) -> String {
+        self.job_url.clone()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_get_project() {
+        temp_env::with_vars([("CI_PROJECT_ID", Some("123"))], || {
+            let project = GitlabNotifier::get_project().unwrap();
+            assert_eq!(project, 123);
+        });
+    }
+
+    #[test]
+    fn test_get_job_url() {
+        temp_env::with_var("CI_JOB_URL", Some("https://example.com/ksnotify"), || {
+            let job_url = GitlabNotifier::get_job_url().unwrap();
+            assert_eq!(job_url, "https://example.com/ksnotify");
+        });
+    }
+
+    #[test]
+    fn test_get_merge_request() {
+        temp_env::with_vars(
+            [
+                ("CI_MERGE_REQUEST_IID", Some("123")),
+                ("CI_COMMIT_SHA", Some("abcdefg")),
+            ],
+            || {
+                let merge_request = GitlabNotifier::get_merge_request().unwrap();
+                assert_eq!(merge_request.number, Some(123));
+                assert_eq!(merge_request.commit_sha, "abcdefg");
+            },
+        );
+    }
+
+    #[test]
+    fn test_get_merge_request_without_number() {
+        temp_env::with_vars(
+            [
+                ("CI_MERGE_REQUEST_IID", None),
+                ("CI_COMMIT_SHA", Some("abcdefg")),
+            ],
+            || {
+                let merge_request = GitlabNotifier::get_merge_request().unwrap();
+                assert_eq!(merge_request.number, None);
+                assert_eq!(merge_request.commit_sha, "abcdefg");
+            },
+        );
     }
 }

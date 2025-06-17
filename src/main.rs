@@ -1,7 +1,6 @@
 #![allow(clippy::use_self)]
 mod ci;
 mod config;
-mod notifier;
 mod parser;
 mod template;
 
@@ -9,7 +8,6 @@ use anyhow::{Context, Result};
 use clap::Parser;
 use clap_verbosity_flag::Verbosity;
 use log::{debug, error, info};
-use notifier::Notifiable;
 use parser::Parsable;
 use std::io::{self, Read};
 use std::path::PathBuf;
@@ -22,10 +20,6 @@ pub struct Cli {
     /// CI platform name.
     #[arg(long)]
     pub ci: Option<String>,
-
-    /// Target platform to notify.
-    #[arg(long)]
-    pub notifier: Option<String>,
 
     /// Update an existing comment instead of creating a new comment. If there is no existing comment, a new comment is created.
     #[arg(long)]
@@ -78,27 +72,9 @@ fn run() -> Result<()> {
 
     let ci =
         ci::CI::new(config.ci).with_context(|| format!("failed to create CI: {:?}", config.ci))?;
-    let notifier_kind = config.notifier;
-
-    let notifier: Box<dyn Notifiable> = match notifier_kind {
-        notifier::NotifierKind::GitLab => {
-            (Box::new(
-                notifier::gitlab::GitlabNotifier::new(&ci)
-                    .with_context(|| format!("failed to create GitLab notifier: {:?}", ci))?,
-            )) as _
-        }
-        notifier::NotifierKind::GitHub => {
-            (Box::new(
-                notifier::github::GithubNotifier::new()
-                    .with_context(|| format!("failed to create GitHub notifier: {:?}", ci))?,
-            )) as _
-        }
-        notifier::NotifierKind::Slack => todo!(),
-    };
-
-    let template = process(&config, Some(ci.job_url().to_string()), cli.target)?;
-    notifier
-        .notify(template, config.patch)
+    let template = process(&config, Some(ci.job_url()), cli.target)?;
+    ci.notifier
+        .notify(&template, config.patch)
         .with_context(|| "failed to notify".to_string())?;
     Ok(())
 }
