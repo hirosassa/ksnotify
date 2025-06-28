@@ -26,9 +26,7 @@ impl GithubNotifier {
         let (owner, repo) = Self::get_repository()?;
         let pull_request = Self::get_pull_request()?;
         let job_url = Self::get_job_url()?;
-        debug!(
-            "owner: {owner}, repo: {repo}, pull_request: {pull_request:?}"
-        );
+        debug!("owner: {owner}, repo: {repo}, pull_request: {pull_request:?}");
 
         // octocrab needs tokio runtime
         let runtime = tokio::runtime::Runtime::new().unwrap();
