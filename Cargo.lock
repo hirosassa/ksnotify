@@ -1120,7 +1120,7 @@ dependencies = [
 
 [[package]]
 name = "ksnotify"
-version = "0.1.8"
+version = "0.0.0"
 dependencies = [
  "anyhow",
  "clap",

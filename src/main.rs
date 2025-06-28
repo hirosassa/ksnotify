@@ -14,8 +14,15 @@ use std::path::PathBuf;
 use std::process;
 use std::string::ToString;
 
+fn get_version() -> &'static str {
+    option_env!("CARGO_PKG_VERSION")
+        .filter(|&v| v != "0.0.0")
+        .or(option_env!("BUILD_VERSION"))
+        .unwrap_or("unknown")
+}
+
 #[derive(Parser, Debug)]
-#[command(author, version, about, long_about = None)]
+#[command(author, version = get_version(), about, long_about = None)]
 pub struct Cli {
     /// CI platform name.
     #[arg(long)]
