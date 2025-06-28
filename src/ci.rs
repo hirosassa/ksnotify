@@ -28,7 +28,7 @@ pub struct CI {
 
 impl CI {
     pub fn new(ci: CIKind) -> Result<Self> {
-        info!("create ci with {:?}", ci);
+        info!("create ci with {ci:?}");
         match ci {
             CIKind::GitLab => {
                 let notifier: Box<dyn Notifiable> = Box::new(

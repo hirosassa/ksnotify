@@ -1,0 +1,62 @@
+version: 2
+
+project_name: ksnotify
+
+builds:
+  - id: rust-build
+    builder: rust
+    binary: ksnotify
+    targets:
+      - x86_64-unknown-linux-gnu
+      - x86_64-unknown-linux-musl
+      - x86_64-pc-windows-gnu
+      - x86_64-apple-darwin
+    tool: cargo
+    command: zigbuild
+    flags:
+      - --release
+      - --all-features
+
+archives:
+  - formats: [ 'tar.gz' ]
+    format_overrides:
+      - goos: windows
+        formats: [ 'zip' ]
+    name_template: "{{ .ProjectName }}-{{ .Os }}-{{ .Arch }}"
+    builds:
+      - rust-build
+
+checksum:
+  name_template: 'checksums.txt'
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^ci:'
+      - '^refactor:'
+      - Merge pull request
+      - Merge branch
+  groups:
+    - title: Features
+      regexp: "^.*feat[(\\w)]*:+.*$"
+      order: 0
+    - title: 'Bug fixes'
+      regexp: "^.*fix[(\\w)]*:+.*$"
+      order: 1
+    - title: Others
+      order: 999
+
+release:
+  github:
+    owner: hirosassa
+    name: ksnotify
+  draft: false
+  prerelease: auto
+  name_template: "{{.ProjectName}}-{{.Version}}"
+  header: |
+    ## Release {{.Tag}} ({{.Date}})
+    
+    Welcome to this new release!

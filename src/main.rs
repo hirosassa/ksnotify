@@ -14,8 +14,15 @@ use std::path::PathBuf;
 use std::process;
 use std::string::ToString;
 
+fn get_version() -> &'static str {
+    option_env!("CARGO_PKG_VERSION")
+        .filter(|&v| v != "0.0.0")
+        .or(option_env!("BUILD_VERSION"))
+        .unwrap_or("unknown")
+}
+
 #[derive(Parser, Debug)]
-#[command(author, version, about, long_about = None)]
+#[command(author, version = get_version(), about, long_about = None)]
 pub struct Cli {
     /// CI platform name.
     #[arg(long)]
@@ -47,7 +54,7 @@ pub struct Cli {
 
 fn main() {
     if let Err(err) = run() {
-        error!("Error: {:#?}", err);
+        error!("Error: {err:#?}");
         process::exit(1);
     }
 }
@@ -60,8 +67,8 @@ fn run() -> Result<()> {
     debug!("verbose mode");
 
     let config =
-        config::Config::new(&cli).with_context(|| format!("failed to load config: {:?}", cli))?;
-    info!("config: {:?}", config);
+        config::Config::new(&cli).with_context(|| format!("failed to load config: {cli:?}"))?;
+    info!("config: {config:?}");
 
     // Local PC (for debug)
     if config.ci == ci::CIKind::Local {

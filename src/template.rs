@@ -76,7 +76,7 @@ No changes. Kubernetes configurations are up-to-date.
         let j = serde_json::to_value(self).unwrap();
         let title = reg.render_template(Self::DEFAULT_BUILD_TITLE_TEMPLATE, &j)?;
         let body = reg.render_template(Self::DEFAULT_BUILD_BODY_TEMPLATE, &j)?;
-        Ok(format!("{}{}", title, body))
+        Ok(format!("{title}{body}"))
     }
 
     pub fn is_same_build(&self, rendered_string: &str) -> Result<bool> {
@@ -137,9 +137,9 @@ No changes. Kubernetes configurations are up-to-date.
         let details: Vec<String> = kinds
             .iter()
             .map(|k| {
-                let title = format!("### {}", k);
+                let title = format!("### {k}");
                 let body = format!("```diff\n{}\n```", results[k]);
-                format!("{}\n{}", title, body)
+                format!("{title}\n{body}")
             })
             .collect();
         details.join("\n")
