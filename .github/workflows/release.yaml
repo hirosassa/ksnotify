@@ -23,7 +23,7 @@ jobs:
           rustup default stable
 
       - name: Install Zig
-        uses: mlugg/setup-zig@@7dccf5e6d09267c55f815f2db29495f30ba2ebca # v2.0.1
+        uses: mlugg/setup-zig@7dccf5e6d09267c55f815f2db29495f30ba2ebca # v2.0.1
 
       - name: Install cargo-zigbuild
         run: cargo install --locked cargo-zigbuild
