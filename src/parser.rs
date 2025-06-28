@@ -99,13 +99,12 @@ impl DiffParser {
         let escaped_image_name = regex::escape(image_name);
         let regexp = Regex::new(
             format!(
-                r"- *image: {}(:.*)?\n\+ *image: {}(:.*)?\n",
-                escaped_image_name, escaped_image_name
+                r"- *image: {escaped_image_name}(:.*)?\n\+ *image: {escaped_image_name}(:.*)?\n"
             )
             .as_str(),
         );
         if let Err(e) = regexp {
-            eprintln!("Failed to create regex: {:?}", e);
+            eprintln!("Failed to create regex: {e:?}");
             return diff.to_string();
         }
         regexp.unwrap().replace_all(diff, "").to_string()
@@ -119,9 +118,9 @@ impl DiffParser {
 impl Parsable for DiffParser {
     fn parse(&self, diff: &str) -> Result<ParseResult> {
         let kinds = self.parse_kinds(diff);
-        debug!("kinds: {:?}", kinds);
+        debug!("kinds: {kinds:?}");
         let chunked_diff = self.parse_diff(diff);
-        debug!("chunked diff: {:?}", chunked_diff);
+        debug!("chunked diff: {chunked_diff:?}");
 
         let mut result: HashMap<_, _> = kinds
             .iter()
@@ -135,7 +134,7 @@ impl Parsable for DiffParser {
             result = self.suppress_skaffold_labels(result);
         }
         result = self.suppress_image_tags(result);
-        debug!("result: {:?}", result);
+        debug!("result: {result:?}");
 
         Ok(ParseResult {
             kind_result: result,

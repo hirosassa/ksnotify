@@ -27,8 +27,7 @@ impl GithubNotifier {
         let pull_request = Self::get_pull_request()?;
         let job_url = Self::get_job_url()?;
         debug!(
-            "owner: {}, repo: {}, pull_request: {:?}",
-            owner, repo, pull_request
+            "owner: {owner}, repo: {repo}, pull_request: {pull_request:?}"
         );
 
         // octocrab needs tokio runtime
@@ -64,8 +63,7 @@ impl GithubNotifier {
         let repository = env::var("GITHUB_REPOSITORY").expect("GITHUB_REPOSITORY must be set.");
         let run_id = env::var("GITHUB_RUN_ID").expect("GITHUB_RUN_ID must be set.");
         Ok(format!(
-            "https://github.com/{}/actions/runs/{}",
-            repository, run_id
+            "https://github.com/{repository}/actions/runs/{run_id}"
         ))
     }
 
@@ -111,7 +109,7 @@ impl GithubNotifier {
             .issues(&self.owner, &self.repo)
             .create_comment(pr_number, template.render()?)
             .await;
-        debug!("create comment response: {:?}", res);
+        debug!("create comment response: {res:?}");
         res?;
         Ok(())
     }
@@ -149,7 +147,7 @@ impl GithubNotifier {
 
         for comment in comments.items {
             if let Some(body) = comment.body.clone() {
-                debug!("checking comment: {}", body);
+                debug!("checking comment: {body}");
                 if template.is_same_build(&body)? {
                     return Ok(Some(comment));
                 }

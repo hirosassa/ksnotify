@@ -54,7 +54,7 @@ pub struct Cli {
 
 fn main() {
     if let Err(err) = run() {
-        error!("Error: {:#?}", err);
+        error!("Error: {err:#?}");
         process::exit(1);
     }
 }
@@ -67,8 +67,8 @@ fn run() -> Result<()> {
     debug!("verbose mode");
 
     let config =
-        config::Config::new(&cli).with_context(|| format!("failed to load config: {:?}", cli))?;
-    info!("config: {:?}", config);
+        config::Config::new(&cli).with_context(|| format!("failed to load config: {cli:?}"))?;
+    info!("config: {config:?}");
 
     // Local PC (for debug)
     if config.ci == ci::CIKind::Local {
