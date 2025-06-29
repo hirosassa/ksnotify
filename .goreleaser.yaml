@@ -3,31 +3,53 @@ version: 2
 project_name: ksnotify
 
 builds:
-  - id: rust-build
+  - id: build-linux-windows
+    skip: '{{ eq .Runtime.Goos "darwin" }}'
     builder: rust
     binary: ksnotify
     targets:
       - x86_64-unknown-linux-gnu
-      - x86_64-unknown-linux-musl
       - x86_64-pc-windows-gnu
-      - x86_64-apple-darwin
     tool: cargo
     command: zigbuild
     flags:
       - --release
       - --all-features
+    env:
+      - BUILD_VERSION={{ .Version }}
+
+  - id: build-macos
+    skip: '{{ ne .Runtime.Goos "darwin" }}'
+    builder: rust
+    binary: ksnotify
+    targets:
+      - x86_64-apple-darwin
+    tool: cross
+    command: build
+    flags:
+      - --release
+      - --all-features
+    env:
+      - BUILD_VERSION={{ .Version }}
 
 archives:
   - formats: [ 'tar.gz' ]
     format_overrides:
       - goos: windows
         formats: [ 'zip' ]
-    name_template: "{{ .ProjectName }}-{{ .Os }}-{{ .Arch }}"
-    builds:
-      - rust-build
+    name_template: >-
+      {{ .ProjectName }}-
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}-
+      {{- .Os }}
+    ids:
+      - build-linux-windows
+      - build-macos
+    allow_different_binary_count: true
 
 checksum:
-  name_template: 'checksums.txt'
+  disable: true
 
 changelog:
   sort: asc
@@ -55,7 +77,7 @@ release:
     name: ksnotify
   draft: false
   prerelease: auto
-  name_template: "{{.ProjectName}}-{{.Version}}"
+  name_template: "{{.Tag}}"
   header: |
     ## Release {{.Tag}} ({{.Date}})
     
