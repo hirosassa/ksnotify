@@ -74,9 +74,11 @@ ref: [Project access tokens | GitLab](https://docs.gitlab.com/ee/user/project/se
 #### For GitHub
 
 If you run `ksnotify` on GitHub Actions, `ksnotify` use `GITHUB_TOKEN` by default.
-If you run `ksnotify` locally, you should set PAT to `GITHUB_TOKEN`.
+If you run `ksnotify` locally, you should set PAT to `GITHUB_TOKEN` environment variable.
 
 ref: [Permissions required for fine-grained personal access tokens](https://docs.github.com/en/rest/authentication/permissions-required-for-fine-grained-personal-access-tokens?apiVersion=2022-11-28)
+
+If you simplify the configuration of setup `ksnotify` in GitHub Actions, you can use [setup-ksnotify](https://github.com/kitagry/setup-ksnotify).
 
 ### Post diff results to GitLab/GitHub
 
