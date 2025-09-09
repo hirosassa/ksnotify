@@ -130,6 +130,7 @@ impl GitlabNotifier {
 }
 
 impl Notifiable for GitlabNotifier {
+    #[allow(clippy::collapsible_if)]
     fn notify(&self, template: &Template, patch: bool) -> Result<()> {
         info!("notify to GitLab");
 
