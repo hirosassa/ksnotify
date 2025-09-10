@@ -76,6 +76,7 @@ impl GithubNotifier {
         Ok((parts[0].to_string(), parts[1].to_string()))
     }
 
+    #[allow(clippy::collapsible_if)]
     async fn post_comment(&self, template: &Template, patch: bool) -> Result<()> {
         if patch {
             if let Some(same_build_comment) = self.retrieve_same_build_comment(template).await? {
