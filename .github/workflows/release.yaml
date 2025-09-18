@@ -21,7 +21,9 @@ jobs:
         run: sudo apt-get install -y binutils-mingw-w64
 
       - name: Install Zig
-        uses: mlugg/setup-zig@7dccf5e6d09267c55f815f2db29495f30ba2ebca # v2.0.1
+        uses: mlugg/setup-zig@8d6198c65fb0feaa111df26e6b467fea8345e46f # v2.0.5
+        with:
+          version: 2024.5.0-mach
 
       - name: Install Rust toolchain
         run: |
