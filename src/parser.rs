@@ -16,24 +16,33 @@ pub struct DiffParser {
     header: Regex,
     diff: Regex,
     skaffold: Regex,
+    argocd: Regex,
     suppress_skaffold: bool,
+    suppress_argocd: bool,
     generation: Regex,
     ignore_tag_images: Vec<String>,
 }
 
 impl DiffParser {
-    pub fn new(suppress_skaffold: bool, ignore_tag_images: Vec<String>) -> Result<Self> {
+    pub fn new(
+        suppress_skaffold: bool,
+        suppress_argocd: bool,
+        ignore_tag_images: Vec<String>,
+    ) -> Result<Self> {
         let kind = Regex::new(r"(?m)^diff -u -N\s.*/(?P<kind>[^/\s]+)\s.*/([^/\s]+)$")?; // matches line like "diff -u -N /var/folders/fl/blahblah/[apiVersion].[kind].[namespace].[name]  /var/folders/fl/blahblah/[apiVersion].[kind].[namespace].[name]"
         let header = Regex::new(r"(?m)^((diff -u -N)|(\-\-\-)|(\+\+\+)).*$")?; // matches diff header that starts with "diff -u -N" or "---" or "+++"
         let diff = Regex::new(r"(?m)^[\-\+].*$")?;
         let skaffold = Regex::new(r"(?m)^(.*labels:.*\r?\n?)?.*skaffold.dev/run-id.*\r?\n?")?;
         let generation = Regex::new(r"(?m)^.*generation: \d+.*\r?\n?")?;
+        let argocd = Regex::new(r"(?m)^.*argocd.argoproj.io/tracking-id:.*\r?\n?")?;
         Ok(Self {
             kind,
             header,
             diff,
             skaffold,
+            argocd,
             suppress_skaffold,
+            suppress_argocd,
             generation,
             ignore_tag_images,
         })
@@ -58,6 +67,18 @@ impl DiffParser {
         result
             .iter()
             .map(|(kind, diff)| (kind, self.remove_skaffold_labels(diff)))
+            .filter(|(_kind, diff)| self.is_there_any_diff(diff))
+            .map(|(kind, diff)| (kind.to_string(), diff))
+            .collect()
+    }
+
+    fn suppress_argocd_annotations(
+        &self,
+        result: HashMap<String, String>,
+    ) -> HashMap<String, String> {
+        result
+            .iter()
+            .map(|(kind, diff)| (kind, self.remove_argocd_annotations(diff)))
             .filter(|(_kind, diff)| self.is_there_any_diff(diff))
             .map(|(kind, diff)| (kind.to_string(), diff))
             .collect()
@@ -89,6 +110,10 @@ impl DiffParser {
 
     fn remove_skaffold_labels(&self, diff: &str) -> String {
         self.skaffold.replace_all(diff, "").to_string()
+    }
+
+    fn remove_argocd_annotations(&self, diff: &str) -> String {
+        self.argocd.replace_all(diff, "").to_string()
     }
 
     fn remove_generation_fields(&self, diff: &str) -> String {
@@ -133,6 +158,9 @@ impl Parsable for DiffParser {
         if self.suppress_skaffold {
             result = self.suppress_skaffold_labels(result);
         }
+        if self.suppress_argocd {
+            result = self.suppress_argocd_annotations(result);
+        }
         result = self.suppress_image_tags(result);
         debug!("result: {result:?}");
 
@@ -158,7 +186,7 @@ diff -u -N /var/folders/fl/blahblah/v1.Service.test.test-app2 /var/folders/fl/bl
 +++ /var/folders/fl/blahblah/v1.Service.test.test-app	2022-02-22 22:00:00.000000000 +0900
 - 12345
 + 67890";
-        let parser = self::DiffParser::new(false, Vec::new()).unwrap();
+        let parser = self::DiffParser::new(false, false, Vec::new()).unwrap();
         let actual = parser.parse(diff).unwrap();
         assert_eq!(actual.kind_result.len(), 2);
 
@@ -182,7 +210,7 @@ diff -u -N /var/folders/fl/blahblah/v1.Service.test.test-app2 /var/folders/fl/bl
 12345
 67890";
 
-        let parser = self::DiffParser::new(false, Vec::new()).unwrap();
+        let parser = self::DiffParser::new(false, false, Vec::new()).unwrap();
         let actual = parser.parse_kinds(diff);
         let expected = ["v1.Service.test.test-app1", "v1.Service.test.test-app2"];
         assert_eq!(&actual[..], &expected[..]);
@@ -200,7 +228,7 @@ diff -u -N /var/folders/fl/blahblah/v1.Service.test.test-app2 /var/folders/fl/bl
 +++ /var/folders/fl/blahblah/v1.Service.test.test-app	2022-02-22 22:00:00.000000000 +0900
 12345
 67890";
-        let parser = self::DiffParser::new(false, Vec::new()).unwrap();
+        let parser = self::DiffParser::new(false, false, Vec::new()).unwrap();
         let actual = parser.parse_diff(diff);
         let expected = ["ABCDE\nFGHIJ", "12345\n67890"];
         assert_eq!(&actual[..], &expected[..]);
@@ -212,7 +240,7 @@ diff -u -N /var/folders/fl/blahblah/v1.Service.test.test-app2 /var/folders/fl/bl
 def
 - hij
 + klm";
-        let parser = self::DiffParser::new(false, Vec::new()).unwrap();
+        let parser = self::DiffParser::new(false, false, Vec::new()).unwrap();
         let actual = parser.is_there_any_diff(diff);
         assert!(actual);
     }
@@ -222,7 +250,7 @@ def
         let diff = "abc
 def
 hij";
-        let parser = self::DiffParser::new(false, Vec::new()).unwrap();
+        let parser = self::DiffParser::new(false, false, Vec::new()).unwrap();
         let actual = parser.is_there_any_diff(diff);
         assert!(!actual);
     }
@@ -238,7 +266,7 @@ hij";
    name: test-app
    namespace: test
 ";
-        let parser = self::DiffParser::new(true, Vec::new()).unwrap();
+        let parser = self::DiffParser::new(true, false, Vec::new()).unwrap();
         let actual = parser.remove_skaffold_labels(diff);
         let expected = "
  @@ -5,7 +5,6 @@
@@ -261,7 +289,7 @@ hij";
    name: test-app
    namespace: test
 ";
-        let parser = self::DiffParser::new(true, Vec::new()).unwrap();
+        let parser = self::DiffParser::new(true, false, Vec::new()).unwrap();
         let actual = parser.remove_skaffold_labels(diff);
         let expected = "
  @@ -5,7 +5,6 @@
@@ -287,7 +315,7 @@ hij";
    namespace: test
  spec:
 ";
-        let parser = self::DiffParser::new(true, Vec::new()).unwrap();
+        let parser = self::DiffParser::new(true, false, Vec::new()).unwrap();
         let actual = parser.remove_skaffold_labels(diff);
         let expected = "
  @@ -1,8 +1,6 @@
@@ -319,7 +347,7 @@ hij";
          spec:
            containers:
 ";
-        let parser = self::DiffParser::new(true, Vec::new()).unwrap();
+        let parser = self::DiffParser::new(true, false, Vec::new()).unwrap();
         let actual = parser.remove_skaffold_labels(diff);
         let expected = "
  @@ -1,8 +1,6 @@
@@ -346,7 +374,7 @@ hij";
    name: test-app
    namespace: test
 ";
-        let parser = self::DiffParser::new(true, Vec::new()).unwrap();
+        let parser = self::DiffParser::new(true, false, Vec::new()).unwrap();
         let actual = parser.remove_generation_fields(diff);
         let expected = "
 @@ -5,9 +5,7 @@
@@ -363,7 +391,7 @@ hij";
    name: test-app
    namespace: test
 ";
-        let parser = self::DiffParser::new(true, Vec::new()).unwrap();
+        let parser = self::DiffParser::new(true, false, Vec::new()).unwrap();
         let actual = parser.remove_generation_fields(diff);
         let expected = "
 @@ -5,9 +5,7 @@
@@ -382,7 +410,7 @@ hij";
 -            image: image:latest@sha256:19adf91
 +            image: image:latest
 ";
-        let parser = self::DiffParser::new(true, Vec::new()).unwrap();
+        let parser = self::DiffParser::new(true, false, Vec::new()).unwrap();
         let actual = parser.remove_image_tags(diff, "image");
         let expected = "
 @@ -50,7 +48,7 @@
@@ -401,7 +429,7 @@ hij";
 -            image: image:latest@sha256:19adf91
 +            image: image
 ";
-        let parser = self::DiffParser::new(true, Vec::new()).unwrap();
+        let parser = self::DiffParser::new(true, false, Vec::new()).unwrap();
         let actual = parser.remove_image_tags(diff, "image");
         let expected = "
 @@ -50,7 +48,7 @@
@@ -420,7 +448,7 @@ hij";
 -            image: image:latest
 +            image: other:latest
 ";
-        let parser = self::DiffParser::new(true, Vec::new()).unwrap();
+        let parser = self::DiffParser::new(true, false, Vec::new()).unwrap();
         let actual = parser.remove_image_tags(diff, "image");
         let expected = "
 @@ -50,7 +48,7 @@
@@ -428,6 +456,24 @@ hij";
                  name: configmap
 -            image: image:latest
 +            image: other:latest
+";
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_ignore_argocd_annotations_when_annotation_was_changed() {
+        let diff = "
+@@ -50,7 +48,7 @@
+             - annotations:
+-                argocd.argoproj.io/tracking-id: release-name:app/Deployment:other/label
+                 deployment.kubernetes.io/revision: '7'
+";
+        let parser = self::DiffParser::new(true, false, Vec::new()).unwrap();
+        let actual = parser.remove_argocd_annotations(diff);
+        let expected = "
+@@ -50,7 +48,7 @@
+             - annotations:
+                 deployment.kubernetes.io/revision: '7'
 ";
         assert_eq!(actual, expected);
     }

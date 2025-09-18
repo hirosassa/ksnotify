@@ -40,6 +40,10 @@ pub struct Cli {
     #[arg(long)]
     pub suppress_skaffold: bool,
 
+    /// Whether if suppress diffs comes from argocd annotations.
+    #[arg(long)]
+    pub suppress_argocd: bool,
+
     /// Path of config file in YAML format. This option cannot conjunction with ci and notifier options.
     #[arg(long, value_name = "FILE")]
     pub config: Option<PathBuf>,
@@ -93,8 +97,11 @@ fn process(
 ) -> Result<template::Template> {
     let mut body = String::new();
     io::stdin().read_to_string(&mut body)?;
-    let parser =
-        parser::DiffParser::new(config.suppress_skaffold, config.ignore_tag_images.clone())?;
+    let parser = parser::DiffParser::new(
+        config.suppress_skaffold,
+        config.suppress_argocd,
+        config.ignore_tag_images.clone(),
+    )?;
     let result = parser.parse(&body)?;
     let link = url.unwrap_or_default();
     let template = template::Template::new(result.kind_result, link, target);

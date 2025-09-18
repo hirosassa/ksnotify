@@ -13,6 +13,7 @@ use std::str::FromStr;
 pub struct Config {
     pub ci: ci::CIKind,
     pub suppress_skaffold: bool,
+    pub suppress_argocd: bool,
     pub ignore_tag_images: Vec<String>,
     pub patch: bool,
 }
@@ -25,11 +26,13 @@ impl Config {
         if let Some(ci_kind) = cli.ci.as_deref() {
             let ci = ci::CIKind::from_str(ci_kind)?;
             let suppress_skaffold = cli.suppress_skaffold;
+            let suppress_argocd = cli.suppress_argocd;
             let ignore_tag_images = cli.ignore_tag_images.clone();
             let patch = cli.patch;
             return Ok(Self {
                 ci,
                 suppress_skaffold,
+                suppress_argocd,
                 ignore_tag_images,
                 patch,
             });
@@ -52,6 +55,7 @@ impl Config {
         info!("config file is not found, use environmental variables");
         let ci = ci::CIKind::from_str(&env::var("KSNOTIFY_CI")?)?;
         let suppress_skaffold = env::var("KSNOTIFY_SUPPRESS_SKAFFOLD").is_ok();
+        let suppress_argocd = env::var("KSNOTIFY_SUPPRESS_ARGOCD").is_ok();
         let ignore_tag_images = env::var("KSNOTIFY_IGNORE_TAG_IMAGES")?
             .split(',')
             .map(String::from)
@@ -60,6 +64,7 @@ impl Config {
         Ok(Self {
             ci,
             suppress_skaffold,
+            suppress_argocd,
             ignore_tag_images,
             patch,
         })
@@ -86,6 +91,7 @@ mod tests {
                     ci: None,
                     target: None,
                     suppress_skaffold: false,
+                    suppress_argocd: false,
                     ignore_tag_images: vec![],
                     patch: false,
                     config: None,
@@ -106,6 +112,7 @@ mod tests {
         let config_content = r#"
 ci: gitlab
 suppress_skaffold: false
+suppress_argocd: false
 ignore_tag_images:
   - image1
   - image2
@@ -120,6 +127,7 @@ patch: false
             ci: None,
             target: None,
             suppress_skaffold: false,
+            suppress_argocd: false,
             ignore_tag_images: vec![],
             patch: false,
             config: Some(config_path),
@@ -129,6 +137,7 @@ patch: false
 
         assert_eq!(config.ci, ci::CIKind::GitLab);
         assert!(!config.suppress_skaffold);
+        assert!(!config.suppress_argocd);
         assert_eq!(config.ignore_tag_images, vec!["image1", "image2"]);
         assert!(!config.patch);
     }
@@ -139,6 +148,7 @@ patch: false
             ci: Some("github".to_string()),
             target: None,
             suppress_skaffold: true,
+            suppress_argocd: true,
             ignore_tag_images: vec!["image1".to_string(), "image2".to_string()],
             patch: true,
             config: None,
@@ -148,6 +158,7 @@ patch: false
 
         assert_eq!(config.ci, ci::CIKind::GitHub);
         assert!(config.suppress_skaffold);
+        assert!(config.suppress_argocd);
         assert_eq!(config.ignore_tag_images, vec!["image1", "image2"]);
         assert!(config.patch);
     }
