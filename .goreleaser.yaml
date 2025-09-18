@@ -80,5 +80,5 @@ release:
   name_template: "{{.Tag}}"
   header: |
     ## Release {{.Tag}} ({{.Date}})
-    
+
     Welcome to this new release!
