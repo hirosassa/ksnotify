@@ -11,7 +11,7 @@ gitlab = { version = "0.1809.0", features = ["client_pem"] }
 handlebars = "4.5.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-serde_yaml = "0.9"
+serde_yml = "0.0.12"
 anyhow = "1.0.43"
 strum = "0.28"
 strum_macros = "0.28"
@@ -27,4 +27,4 @@ tokio = { version = "1.45.0", features = ["rt-multi-thread"] }
 
 [dev-dependencies]
 temp-env = "0.3.6"
-tempdir = "0.3.7"
+tempfile = "3"

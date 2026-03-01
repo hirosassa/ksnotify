@@ -46,7 +46,7 @@ impl Config {
     fn from_file(path: PathBuf) -> Result<Self> {
         info!("cli arguments are not set, use configuration file");
         let config_string = fs::read_to_string(path)?;
-        let config: Config = serde_yaml::from_str(&config_string)?;
+        let config: Config = serde_yml::from_str(&config_string)?;
 
         Ok(config)
     }
@@ -119,7 +119,7 @@ ignore_tag_images:
 patch: false
 "#;
 
-        let temp_dir = tempdir::TempDir::new("temp").unwrap();
+        let temp_dir = tempfile::TempDir::new().unwrap();
         let config_path = temp_dir.path().join("config.yaml");
         fs::write(&config_path, config_content).unwrap();
 
