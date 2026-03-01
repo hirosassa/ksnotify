@@ -58,8 +58,8 @@ impl GitlabNotifier {
 
     fn get_merge_request() -> Result<MergeRequest> {
         let number = env::var("CI_MERGE_REQUEST_IID").ok();
-        let number = if number.is_some() {
-            Some(number.unwrap().parse::<u64>()?)
+        let number = if let Some(n) = number {
+            Some(n.parse::<u64>()?)
         } else {
             None
         };

@@ -7,21 +7,21 @@ edition = "2024"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
-gitlab = { version = "0.1700.1", features = ["client_pem"] }
+gitlab = { version = "0.1809.0", features = ["client_pem"] }
 handlebars = "4.5.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 serde_yaml = "0.9"
 anyhow = "1.0.43"
-strum = "0.21"
-strum_macros = "0.21"
+strum = "0.28"
+strum_macros = "0.28"
 thiserror = "1.0"
 regex = "1"
-itertools = "0.10.5"
+itertools = "0.14.0"
 clap = { version = "4.0.18", features = ["derive"] }
 clap-verbosity-flag = "2.0.0"
 log = "0.4"
-env_logger = "0.9"
+env_logger = "0.11.9"
 octocrab = "0.44.0"
 tokio = { version = "1.45.0", features = ["rt-multi-thread"] }
 

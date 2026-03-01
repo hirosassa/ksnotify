@@ -92,8 +92,8 @@ impl GithubNotifier {
     }
 
     async fn create_new_comment(&self, template: &Template) -> Result<()> {
-        let pr_number = if self.pull_request.number.is_some() {
-            self.pull_request.number.unwrap()
+        let pr_number = if let Some(n) = self.pull_request.number {
+            n
         } else {
             debug!("pull request number is None");
             return Ok(());
@@ -125,8 +125,8 @@ impl GithubNotifier {
     async fn retrieve_same_build_comment(&self, template: &Template) -> Result<Option<Comment>> {
         info!("retrieve same build comment");
 
-        let pr_number = if self.pull_request.number.is_some() {
-            self.pull_request.number.unwrap()
+        let pr_number = if let Some(n) = self.pull_request.number {
+            n
         } else {
             debug!("pull request number is None");
             return Ok(None);
