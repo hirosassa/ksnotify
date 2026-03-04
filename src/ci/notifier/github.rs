@@ -224,4 +224,12 @@ mod tests {
             },
         );
     }
+
+    #[test]
+    fn test_get_token() {
+        temp_env::with_var("GITHUB_TOKEN", Some("test-token-value"), || {
+            let token = GithubNotifier::get_token().unwrap();
+            assert_eq!(token, "test-token-value");
+        });
+    }
 }

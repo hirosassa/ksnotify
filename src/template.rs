@@ -344,4 +344,111 @@ No changes. Kubernetes configurations are up-to-date.
         };
         assert!(!template.is_same_build("## Plan result (test2)").unwrap())
     }
+
+    #[test]
+    fn test_is_same_build_with_empty_string() {
+        let template = Template {
+            target: Some("test".to_string()),
+            created_kinds: Vec::new(),
+            pruned_kinds: Vec::new(),
+            configured_kinds: Vec::new(),
+            details: "test".to_string(),
+            link: "http://example.com".to_string(),
+            is_no_changes: false,
+        };
+        assert!(!template.is_same_build("").unwrap());
+    }
+
+    #[test]
+    fn test_render_without_target() {
+        let data: HashMap<String, String> = HashMap::new();
+        let template = Template::new(data, "https://example.com".to_string(), None);
+        let actual = template.render().unwrap();
+        assert!(actual.starts_with("## Plan result\n"));
+    }
+
+    #[test]
+    fn test_generate_configured_kinds_markdown() {
+        let results = HashMap::from([
+            (
+                "v1.Service.default.svc-b".to_string(),
+                "-  port: 80\n+  port: 8080".to_string(),
+            ),
+            (
+                "v1.Service.default.svc-a".to_string(),
+                "-  port: 80\n+  port: 8080".to_string(),
+            ),
+        ]);
+        let actual = Template::generate_configured_kinds_markdown(&results);
+        assert_eq!(
+            actual,
+            vec![
+                "v1.Service.default.svc-a".to_string(),
+                "v1.Service.default.svc-b".to_string(),
+            ]
+        );
+    }
+
+    #[test]
+    fn test_generate_created_kinds_markdown() {
+        let results = HashMap::from([
+            (
+                "apps.v1.Deployment.default.dep-b".to_string(),
+                "+kind: Deployment\n+  name: dep-b".to_string(),
+            ),
+            (
+                "apps.v1.Deployment.default.dep-a".to_string(),
+                "+kind: Deployment\n+  name: dep-a".to_string(),
+            ),
+            (
+                "v1.Service.default.svc".to_string(),
+                "-  port: 80\n+  port: 8080".to_string(),
+            ),
+        ]);
+        let actual = Template::generate_created_kinds_markdown(&results);
+        assert_eq!(
+            actual,
+            vec![
+                "apps.v1.Deployment.default.dep-a".to_string(),
+                "apps.v1.Deployment.default.dep-b".to_string(),
+            ]
+        );
+    }
+
+    #[test]
+    fn test_generate_pruned_kinds_markdown() {
+        let results = HashMap::from([
+            (
+                "apps.v1.Deployment.default.dep-b".to_string(),
+                "-kind: Deployment\n-  name: dep-b".to_string(),
+            ),
+            (
+                "apps.v1.Deployment.default.dep-a".to_string(),
+                "-kind: Deployment\n-  name: dep-a".to_string(),
+            ),
+            (
+                "v1.Service.default.svc".to_string(),
+                "-  port: 80\n+  port: 8080".to_string(),
+            ),
+        ]);
+        let actual = Template::generate_pruned_kinds_markdown(&results);
+        assert_eq!(
+            actual,
+            vec![
+                "apps.v1.Deployment.default.dep-a".to_string(),
+                "apps.v1.Deployment.default.dep-b".to_string(),
+            ]
+        );
+    }
+
+    #[test]
+    fn test_generate_details_markdown_sorted_by_kind() {
+        let results = HashMap::from([
+            ("kind-b".to_string(), "diff-b".to_string()),
+            ("kind-a".to_string(), "diff-a".to_string()),
+        ]);
+        let actual = Template::generate_details_markdown(&results);
+        let expected = "### kind-a\n```diff\ndiff-a\n```\n### kind-b\n```diff\ndiff-b\n```";
+        assert_eq!(actual, expected);
+    }
 }

@@ -162,4 +162,27 @@ patch: false
         assert_eq!(config.ignore_tag_images, vec!["image1", "image2"]);
         assert!(config.patch);
     }
+
+    #[test]
+    fn test_new_from_env_missing_ci_returns_error() {
+        temp_env::with_vars(
+            [
+                ("KSNOTIFY_CI", None::<&str>),
+                ("KSNOTIFY_IGNORE_TAG_IMAGES", Some("")),
+            ],
+            || {
+                let result = Config::new(&Cli {
+                    ci: None,
+                    target: None,
+                    suppress_skaffold: false,
+                    suppress_argocd: false,
+                    ignore_tag_images: vec![],
+                    patch: false,
+                    config: None,
+                    verbose: Verbosity::<ErrorLevel>::default(),
+                });
+                assert!(result.is_err());
+            },
+        );
+    }
 }
