@@ -218,4 +218,28 @@ mod tests {
             },
         );
     }
+
+    #[test]
+    fn test_get_base_url() {
+        temp_env::with_var("CI_SERVER_HOST", Some("gitlab.example.com"), || {
+            let base_url = GitlabNotifier::get_base_url().unwrap();
+            assert_eq!(base_url, "gitlab.example.com");
+        });
+    }
+
+    #[test]
+    fn test_get_token() {
+        temp_env::with_var("KSNOTIFY_GITLAB_TOKEN", Some("glpat-test-token"), || {
+            let token = GitlabNotifier::get_token().unwrap();
+            assert_eq!(token, "glpat-test-token");
+        });
+    }
+
+    #[test]
+    fn test_get_project_with_invalid_value() {
+        temp_env::with_var("CI_PROJECT_ID", Some("not-a-number"), || {
+            let result = GitlabNotifier::get_project();
+            assert!(result.is_err());
+        });
+    }
 }

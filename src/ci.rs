@@ -59,3 +59,34 @@ pub struct MergeRequest {
     pub number: Option<u64>,
     pub commit_sha: String,
 }
+
+#[cfg(test)]
+mod tests {
+    use std::str::FromStr;
+
+    use super::*;
+
+    #[test]
+    fn test_ci_kind_from_str_github() {
+        let actual = CIKind::from_str("github").unwrap();
+        assert_eq!(actual, CIKind::GitHub);
+    }
+
+    #[test]
+    fn test_ci_kind_from_str_gitlab() {
+        let actual = CIKind::from_str("gitlab").unwrap();
+        assert_eq!(actual, CIKind::GitLab);
+    }
+
+    #[test]
+    fn test_ci_kind_from_str_local() {
+        let actual = CIKind::from_str("local").unwrap();
+        assert_eq!(actual, CIKind::Local);
+    }
+
+    #[test]
+    fn test_ci_kind_from_str_invalid() {
+        let actual = CIKind::from_str("invalid");
+        assert!(actual.is_err());
+    }
+}

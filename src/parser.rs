@@ -124,7 +124,7 @@ impl DiffParser {
         let escaped_image_name = regex::escape(image_name);
         let regexp = Regex::new(
             format!(
-                r"- *image: {escaped_image_name}(:.*)?\n\+ *image: {escaped_image_name}(:.*)?\n"
+                r"- *image: {escaped_image_name}(:.*)?\n\+ *image: {escaped_image_name}(:.*)?(\n|$)"
             )
             .as_str(),
         );
@@ -476,5 +476,138 @@ hij";
                  deployment.kubernetes.io/revision: '7'
 ";
         assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_suppress_skaffold_labels_removes_entry_when_only_skaffold_diff() {
+        let result = HashMap::from([(
+            "v1.Deployment.default.app".to_string(),
+            "-    skaffold.dev/run-id: 123\n".to_string(),
+        )]);
+        let parser = DiffParser::new(true, false, Vec::new()).unwrap();
+        let actual = parser.suppress_skaffold_labels(result);
+        assert!(actual.is_empty());
+    }
+
+    #[test]
+    fn test_suppress_skaffold_labels_keeps_entry_when_other_diff_exists() {
+        let result = HashMap::from([(
+            "v1.Deployment.default.app".to_string(),
+            "-    skaffold.dev/run-id: 123\n-  image: old\n+  image: new\n".to_string(),
+        )]);
+        let parser = DiffParser::new(true, false, Vec::new()).unwrap();
+        let actual = parser.suppress_skaffold_labels(result);
+        assert_eq!(actual.len(), 1);
+        assert!(actual["v1.Deployment.default.app"].contains("-  image: old"));
+    }
+
+    #[test]
+    fn test_suppress_argocd_annotations_removes_entry_when_only_argocd_diff() {
+        let result = HashMap::from([(
+            "v1.Deployment.default.app".to_string(),
+            "-                argocd.argoproj.io/tracking-id: release-name:app\n".to_string(),
+        )]);
+        let parser = DiffParser::new(false, true, Vec::new()).unwrap();
+        let actual = parser.suppress_argocd_annotations(result);
+        assert!(actual.is_empty());
+    }
+
+    #[test]
+    fn test_suppress_argocd_annotations_keeps_entry_when_other_diff_exists() {
+        let result = HashMap::from([(
+            "v1.Deployment.default.app".to_string(),
+            "-                argocd.argoproj.io/tracking-id: release-name:app\n-  image: old\n+  image: new\n".to_string(),
+        )]);
+        let parser = DiffParser::new(false, true, Vec::new()).unwrap();
+        let actual = parser.suppress_argocd_annotations(result);
+        assert_eq!(actual.len(), 1);
+        assert!(actual["v1.Deployment.default.app"].contains("-  image: old"));
+    }
+
+    #[test]
+    fn test_suppress_generation_fields_removes_entry_when_only_generation_diff() {
+        let result = HashMap::from([(
+            "v1.Deployment.default.app".to_string(),
+            "-  generation: 18\n+  generation: 19\n".to_string(),
+        )]);
+        let parser = DiffParser::new(false, false, Vec::new()).unwrap();
+        let actual = parser.suppress_generation_fields(result);
+        assert!(actual.is_empty());
+    }
+
+    #[test]
+    fn test_suppress_generation_fields_keeps_entry_when_other_diff_exists() {
+        let result = HashMap::from([(
+            "v1.Deployment.default.app".to_string(),
+            "-  generation: 18\n+  generation: 19\n-  image: old\n+  image: new\n".to_string(),
+        )]);
+        let parser = DiffParser::new(false, false, Vec::new()).unwrap();
+        let actual = parser.suppress_generation_fields(result);
+        assert_eq!(actual.len(), 1);
+        assert!(actual["v1.Deployment.default.app"].contains("-  image: old"));
+    }
+
+    #[test]
+    fn test_suppress_image_tags_removes_entry_when_only_image_tag_diff() {
+        let result = HashMap::from([(
+            "v1.Deployment.default.app".to_string(),
+            "-            image: myapp:v1.0\n+            image: myapp:v2.0\n".to_string(),
+        )]);
+        let parser = DiffParser::new(false, false, vec!["myapp".to_string()]).unwrap();
+        let actual = parser.suppress_image_tags(result);
+        assert!(actual.is_empty());
+    }
+
+    #[test]
+    fn test_suppress_image_tags_applies_multiple_images() {
+        let result = HashMap::from([(
+            "v1.Deployment.default.app".to_string(),
+            "-            image: app1:v1\n+            image: app1:v2\n-            image: app2:v1\n+            image: app2:v2\n".to_string(),
+        )]);
+        let parser =
+            DiffParser::new(false, false, vec!["app1".to_string(), "app2".to_string()]).unwrap();
+        let actual = parser.suppress_image_tags(result);
+        assert!(actual.is_empty());
+    }
+
+    #[test]
+    fn test_parse_with_suppress_skaffold_excludes_skaffold_only_resource() {
+        let diff = "diff -u -N /tmp/v1.Deployment.default.app /tmp/v1.Deployment.default.app
+--- /tmp/v1.Deployment.default.app	2022-02-22 22:00:00.000000000 +0900
++++ /tmp/v1.Deployment.default.app	2022-02-22 22:00:00.000000000 +0900
+-    skaffold.dev/run-id: abc123";
+        let parser = DiffParser::new(true, false, Vec::new()).unwrap();
+        let actual = parser.parse(diff).unwrap();
+        assert!(actual.kind_result.is_empty());
+    }
+
+    #[test]
+    fn test_parse_with_suppress_argocd_excludes_argocd_only_resource() {
+        let diff = "diff -u -N /tmp/v1.Deployment.default.app /tmp/v1.Deployment.default.app
+--- /tmp/v1.Deployment.default.app	2022-02-22 22:00:00.000000000 +0900
++++ /tmp/v1.Deployment.default.app	2022-02-22 22:00:00.000000000 +0900
+-                argocd.argoproj.io/tracking-id: release-name:app";
+        let parser = DiffParser::new(false, true, Vec::new()).unwrap();
+        let actual = parser.parse(diff).unwrap();
+        assert!(actual.kind_result.is_empty());
+    }
+
+    #[test]
+    fn test_parse_with_ignore_tag_images_excludes_tag_only_resource() {
+        let diff = "diff -u -N /tmp/v1.Deployment.default.app /tmp/v1.Deployment.default.app
+--- /tmp/v1.Deployment.default.app	2022-02-22 22:00:00.000000000 +0900
++++ /tmp/v1.Deployment.default.app	2022-02-22 22:00:00.000000000 +0900
+-            image: myapp:v1.0
++            image: myapp:v2.0";
+        let parser = DiffParser::new(false, false, vec!["myapp".to_string()]).unwrap();
+        let actual = parser.parse(diff).unwrap();
+        assert!(actual.kind_result.is_empty());
+    }
+
+    #[test]
+    fn test_parse_empty_diff_returns_empty_result() {
+        let parser = DiffParser::new(false, false, Vec::new()).unwrap();
+        let actual = parser.parse("").unwrap();
+        assert!(actual.kind_result.is_empty());
     }
 }
