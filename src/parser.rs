@@ -124,7 +124,7 @@ impl DiffParser {
         let escaped_image_name = regex::escape(image_name);
         let regexp = Regex::new(
             format!(
-                r"- *image: {escaped_image_name}(:.*)?\n\+ *image: {escaped_image_name}(:.*)?(\n|$)"
+                r"- *image: {escaped_image_name}(:.*)?\n\+ *image: {escaped_image_name}(:.*)?(?:\n|$)"
             )
             .as_str(),
         );
