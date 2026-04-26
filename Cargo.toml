@@ -7,7 +7,7 @@ edition = "2024"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
-gitlab = { version = "0.1810.0", features = ["client_pem"] }
+gitlab = { version = "0.1811.0", features = ["client_pem"] }
 handlebars = "6"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
