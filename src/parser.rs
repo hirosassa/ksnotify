@@ -63,49 +63,19 @@ impl DiffParser {
             .collect()
     }
 
-    fn suppress_skaffold_labels(&self, result: HashMap<String, String>) -> HashMap<String, String> {
-        result
-            .iter()
-            .map(|(kind, diff)| (kind, self.remove_skaffold_labels(diff)))
-            .filter(|(_kind, diff)| self.is_there_any_diff(diff))
-            .map(|(kind, diff)| (kind.to_string(), diff))
-            .collect()
-    }
-
-    fn suppress_argocd_annotations(
+    fn suppress_by(
         &self,
         result: HashMap<String, String>,
+        remove_fn: impl Fn(&str) -> String,
     ) -> HashMap<String, String> {
         result
-            .iter()
-            .map(|(kind, diff)| (kind, self.remove_argocd_annotations(diff)))
+            .into_iter()
+            .map(|(kind, diff)| {
+                let cleaned = remove_fn(&diff);
+                (kind, cleaned)
+            })
             .filter(|(_kind, diff)| self.is_there_any_diff(diff))
-            .map(|(kind, diff)| (kind.to_string(), diff))
             .collect()
-    }
-
-    fn suppress_generation_fields(
-        &self,
-        result: HashMap<String, String>,
-    ) -> HashMap<String, String> {
-        result
-            .iter()
-            .map(|(kind, diff)| (kind, self.remove_generation_fields(diff)))
-            .filter(|(_kind, diff)| self.is_there_any_diff(diff))
-            .map(|(kind, diff)| (kind.to_string(), diff))
-            .collect()
-    }
-
-    fn suppress_image_tags(&self, mut result: HashMap<String, String>) -> HashMap<String, String> {
-        for image_name in self.ignore_tag_images.iter() {
-            result = result
-                .iter()
-                .map(|(kind, diff)| (kind, self.remove_image_tags(diff, image_name)))
-                .filter(|(_kind, diff)| self.is_there_any_diff(diff))
-                .map(|(kind, diff)| (kind.to_string(), diff))
-                .collect();
-        }
-        result
     }
 
     fn remove_skaffold_labels(&self, diff: &str) -> String {
@@ -152,15 +122,17 @@ impl Parsable for DiffParser {
             .map(|(k, v)| (k.to_string(), v.to_string()))
             .collect();
 
-        result = self.suppress_generation_fields(result);
+        result = self.suppress_by(result, |d| self.remove_generation_fields(d));
 
         if self.suppress_skaffold {
-            result = self.suppress_skaffold_labels(result);
+            result = self.suppress_by(result, |d| self.remove_skaffold_labels(d));
         }
         if self.suppress_argocd {
-            result = self.suppress_argocd_annotations(result);
+            result = self.suppress_by(result, |d| self.remove_argocd_annotations(d));
         }
-        result = self.suppress_image_tags(result);
+        for image_name in &self.ignore_tag_images.clone() {
+            result = self.suppress_by(result, |d| self.remove_image_tags(d, image_name));
+        }
         debug!("result: {result:?}");
 
         Ok(ParseResult {
@@ -478,94 +450,97 @@ hij";
     }
 
     #[test]
-    fn test_suppress_skaffold_labels_removes_entry_when_only_skaffold_diff() {
+    fn test_suppress_by_skaffold_removes_entry_when_only_skaffold_diff() {
         let result = HashMap::from([(
             "v1.Deployment.default.app".to_string(),
             "-    skaffold.dev/run-id: 123\n".to_string(),
         )]);
         let parser = DiffParser::new(true, false, Vec::new()).unwrap();
-        let actual = parser.suppress_skaffold_labels(result);
+        let actual = parser.suppress_by(result, |d| parser.remove_skaffold_labels(d));
         assert!(actual.is_empty());
     }
 
     #[test]
-    fn test_suppress_skaffold_labels_keeps_entry_when_other_diff_exists() {
+    fn test_suppress_by_skaffold_keeps_entry_when_other_diff_exists() {
         let result = HashMap::from([(
             "v1.Deployment.default.app".to_string(),
             "-    skaffold.dev/run-id: 123\n-  image: old\n+  image: new\n".to_string(),
         )]);
         let parser = DiffParser::new(true, false, Vec::new()).unwrap();
-        let actual = parser.suppress_skaffold_labels(result);
+        let actual = parser.suppress_by(result, |d| parser.remove_skaffold_labels(d));
         assert_eq!(actual.len(), 1);
         assert!(actual["v1.Deployment.default.app"].contains("-  image: old"));
     }
 
     #[test]
-    fn test_suppress_argocd_annotations_removes_entry_when_only_argocd_diff() {
+    fn test_suppress_by_argocd_removes_entry_when_only_argocd_diff() {
         let result = HashMap::from([(
             "v1.Deployment.default.app".to_string(),
             "-                argocd.argoproj.io/tracking-id: release-name:app\n".to_string(),
         )]);
         let parser = DiffParser::new(false, true, Vec::new()).unwrap();
-        let actual = parser.suppress_argocd_annotations(result);
+        let actual = parser.suppress_by(result, |d| parser.remove_argocd_annotations(d));
         assert!(actual.is_empty());
     }
 
     #[test]
-    fn test_suppress_argocd_annotations_keeps_entry_when_other_diff_exists() {
+    fn test_suppress_by_argocd_keeps_entry_when_other_diff_exists() {
         let result = HashMap::from([(
             "v1.Deployment.default.app".to_string(),
             "-                argocd.argoproj.io/tracking-id: release-name:app\n-  image: old\n+  image: new\n".to_string(),
         )]);
         let parser = DiffParser::new(false, true, Vec::new()).unwrap();
-        let actual = parser.suppress_argocd_annotations(result);
+        let actual = parser.suppress_by(result, |d| parser.remove_argocd_annotations(d));
         assert_eq!(actual.len(), 1);
         assert!(actual["v1.Deployment.default.app"].contains("-  image: old"));
     }
 
     #[test]
-    fn test_suppress_generation_fields_removes_entry_when_only_generation_diff() {
+    fn test_suppress_by_generation_removes_entry_when_only_generation_diff() {
         let result = HashMap::from([(
             "v1.Deployment.default.app".to_string(),
             "-  generation: 18\n+  generation: 19\n".to_string(),
         )]);
         let parser = DiffParser::new(false, false, Vec::new()).unwrap();
-        let actual = parser.suppress_generation_fields(result);
+        let actual = parser.suppress_by(result, |d| parser.remove_generation_fields(d));
         assert!(actual.is_empty());
     }
 
     #[test]
-    fn test_suppress_generation_fields_keeps_entry_when_other_diff_exists() {
+    fn test_suppress_by_generation_keeps_entry_when_other_diff_exists() {
         let result = HashMap::from([(
             "v1.Deployment.default.app".to_string(),
             "-  generation: 18\n+  generation: 19\n-  image: old\n+  image: new\n".to_string(),
         )]);
         let parser = DiffParser::new(false, false, Vec::new()).unwrap();
-        let actual = parser.suppress_generation_fields(result);
+        let actual = parser.suppress_by(result, |d| parser.remove_generation_fields(d));
         assert_eq!(actual.len(), 1);
         assert!(actual["v1.Deployment.default.app"].contains("-  image: old"));
     }
 
     #[test]
-    fn test_suppress_image_tags_removes_entry_when_only_image_tag_diff() {
+    fn test_suppress_by_image_tags_removes_entry_when_only_image_tag_diff() {
         let result = HashMap::from([(
             "v1.Deployment.default.app".to_string(),
             "-            image: myapp:v1.0\n+            image: myapp:v2.0\n".to_string(),
         )]);
         let parser = DiffParser::new(false, false, vec!["myapp".to_string()]).unwrap();
-        let actual = parser.suppress_image_tags(result);
+        let actual = parser.suppress_by(result, |d| parser.remove_image_tags(d, "myapp"));
         assert!(actual.is_empty());
     }
 
     #[test]
-    fn test_suppress_image_tags_applies_multiple_images() {
+    fn test_suppress_by_image_tags_applies_multiple_images() {
         let result = HashMap::from([(
             "v1.Deployment.default.app".to_string(),
             "-            image: app1:v1\n+            image: app1:v2\n-            image: app2:v1\n+            image: app2:v2\n".to_string(),
         )]);
         let parser =
             DiffParser::new(false, false, vec!["app1".to_string(), "app2".to_string()]).unwrap();
-        let actual = parser.suppress_image_tags(result);
+        let mut actual = result;
+        for image_name in &parser.ignore_tag_images.clone() {
+            actual = parser.suppress_by(actual, |d| parser.remove_image_tags(d, image_name));
+        }
         assert!(actual.is_empty());
     }
 
