@@ -3,13 +3,12 @@ version: 2
 project_name: ksnotify
 
 builds:
-  - id: build-linux-windows
+  - id: build-linux
     skip: '{{ eq .Runtime.Goos "darwin" }}'
     builder: rust
     binary: ksnotify
     targets:
       - x86_64-unknown-linux-gnu
-      - x86_64-pc-windows-gnu
     tool: cargo
     command: zigbuild
     flags:
@@ -34,9 +33,6 @@ builds:
 
 archives:
   - formats: [ 'tar.gz' ]
-    format_overrides:
-      - goos: windows
-        formats: [ 'zip' ]
     name_template: >-
       {{ .ProjectName }}-
       {{- if eq .Arch "amd64" }}x86_64
@@ -44,7 +40,7 @@ archives:
       {{- else }}{{ .Arch }}{{ end }}-
       {{- .Os }}
     ids:
-      - build-linux-windows
+      - build-linux
       - build-macos
     allow_different_binary_count: true
 
