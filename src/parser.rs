@@ -130,7 +130,7 @@ impl Parsable for DiffParser {
         if self.suppress_argocd {
             result = self.suppress_by(result, |d| self.remove_argocd_annotations(d));
         }
-        for image_name in &self.ignore_tag_images.clone() {
+        for image_name in &self.ignore_tag_images {
             result = self.suppress_by(result, |d| self.remove_image_tags(d, image_name));
         }
         debug!("result: {result:?}");
@@ -538,7 +538,7 @@ hij";
         let parser =
             DiffParser::new(false, false, vec!["app1".to_string(), "app2".to_string()]).unwrap();
         let mut actual = result;
-        for image_name in &parser.ignore_tag_images.clone() {
+        for image_name in &parser.ignore_tag_images {
             actual = parser.suppress_by(actual, |d| parser.remove_image_tags(d, image_name));
         }
         assert!(actual.is_empty());

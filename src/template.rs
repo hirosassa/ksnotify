@@ -107,7 +107,7 @@ No changes. Kubernetes configurations are up-to-date.
     ) -> Vec<String> {
         results
             .iter()
-            .filter(|(_, e)| predicate(e))
+            .filter(|(_, e)| predicate(e.as_str()))
             .map(|(k, _)| k.clone())
             .sorted()
             .collect()
