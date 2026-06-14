@@ -73,7 +73,7 @@ No changes. Kubernetes configurations are up-to-date.
 
     pub fn render(&self) -> Result<String> {
         let reg = Handlebars::new();
-        let j = serde_json::to_value(self).unwrap();
+        let j = serde_json::to_value(self)?;
         let title = reg.render_template(Self::DEFAULT_BUILD_TITLE_TEMPLATE, &j)?;
         let body = reg.render_template(Self::DEFAULT_BUILD_BODY_TEMPLATE, &j)?;
         Ok(format!("{title}{body}"))
@@ -91,7 +91,7 @@ No changes. Kubernetes configurations are up-to-date.
         };
 
         let reg = Handlebars::new();
-        let j = serde_json::to_value(self).unwrap();
+        let j = serde_json::to_value(self)?;
         let current_title = reg.render_template(Self::DEFAULT_BUILD_TITLE_TEMPLATE, &j)?;
 
         if current_title == old_title {

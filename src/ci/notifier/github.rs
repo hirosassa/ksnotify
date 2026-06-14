@@ -6,7 +6,7 @@ use octocrab::{Octocrab, models::issues::Comment};
 use std::env;
 
 use super::Notifiable;
-use anyhow::Result;
+use anyhow::{Context, Result};
 
 #[derive(Debug)]
 pub struct GithubNotifier {
@@ -44,13 +44,13 @@ impl GithubNotifier {
 
     fn get_pull_request() -> Result<MergeRequest> {
         // GITHUB_REF_NAME is like <number>/merge
-        let ref_name = env::var("GITHUB_REF_NAME").expect("GITHUB_REF_NAME must be set.");
+        let ref_name = env::var("GITHUB_REF_NAME").context("GITHUB_REF_NAME must be set")?;
         let number = if ref_name.ends_with("/merge") {
             Some(ref_name.split("/").next().unwrap().parse::<u64>()?)
         } else {
             None
         };
-        let commit_sha = env::var("GITHUB_SHA").expect("GITHUB_SHA must be set.");
+        let commit_sha = env::var("GITHUB_SHA").context("GITHUB_SHA must be set")?;
 
         Ok(MergeRequest { number, commit_sha })
     }
@@ -58,20 +58,20 @@ impl GithubNotifier {
     // Default environment variables in GitHub Actions
     // see: https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/store-information-in-variables#default-environment-variables
     fn get_job_url() -> Result<String> {
-        let repository = env::var("GITHUB_REPOSITORY").expect("GITHUB_REPOSITORY must be set.");
-        let run_id = env::var("GITHUB_RUN_ID").expect("GITHUB_RUN_ID must be set.");
+        let repository = env::var("GITHUB_REPOSITORY").context("GITHUB_REPOSITORY must be set")?;
+        let run_id = env::var("GITHUB_RUN_ID").context("GITHUB_RUN_ID must be set")?;
         Ok(format!(
             "https://github.com/{repository}/actions/runs/{run_id}"
         ))
     }
 
     fn get_token() -> Result<String> {
-        Ok(env::var("GITHUB_TOKEN").expect("GITHUB_TOKEN must be set."))
+        env::var("GITHUB_TOKEN").context("GITHUB_TOKEN must be set")
     }
 
     fn get_repository() -> Result<(String, String)> {
         // GITHUB_REPOSITORY is like <owner>/<repo>
-        let env = env::var("GITHUB_REPOSITORY").expect("GITHUB_REPOSITORY must be set.");
+        let env = env::var("GITHUB_REPOSITORY").context("GITHUB_REPOSITORY must be set")?;
         let parts = env.split('/').collect::<Vec<&str>>();
         Ok((parts[0].to_string(), parts[1].to_string()))
     }

@@ -45,7 +45,7 @@ impl CI {
 
                 Ok(Self { notifier })
             }
-            CIKind::Local => todo!(), // do nothing if local run. never reach here.
+            CIKind::Local => unreachable!("Local CI kind should be handled before CI::new"),
         }
     }
 
