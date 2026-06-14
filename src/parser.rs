@@ -95,13 +95,8 @@ impl DiffParser {
         let pattern = format!(
             r"- *image: {escaped_image_name}(:.*)?\n\+ *image: {escaped_image_name}(:.*)?(?:\n|$)"
         );
-        match Regex::new(&pattern) {
-            Ok(re) => re.replace_all(diff, "").to_string(),
-            Err(e) => {
-                eprintln!("Failed to create regex: {e:?}");
-                diff.to_string()
-            }
-        }
+        let re = Regex::new(&pattern).unwrap();
+        re.replace_all(diff, "").to_string()
     }
 
     fn is_there_any_diff(&self, body: &str) -> bool {
