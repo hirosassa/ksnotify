@@ -101,35 +101,30 @@ No changes. Kubernetes configurations are up-to-date.
         Ok(false)
     }
 
-    fn generate_configured_kinds_markdown(results: &HashMap<String, String>) -> Vec<String> {
-        let kinds: Vec<String> = results
+    fn filter_kinds(
+        results: &HashMap<String, String>,
+        predicate: impl Fn(&str) -> bool,
+    ) -> Vec<String> {
+        results
             .iter()
-            .filter(|(_, e)| !e.contains("-kind: "))
-            .filter(|(_, e)| !e.contains("+kind: "))
+            .filter(|(_, e)| predicate(e.as_str()))
             .map(|(k, _)| k.clone())
             .sorted()
-            .collect();
-        kinds
+            .collect()
+    }
+
+    fn generate_configured_kinds_markdown(results: &HashMap<String, String>) -> Vec<String> {
+        Self::filter_kinds(results, |e| {
+            !e.contains("-kind: ") && !e.contains("+kind: ")
+        })
     }
 
     fn generate_created_kinds_markdown(results: &HashMap<String, String>) -> Vec<String> {
-        let kinds: Vec<String> = results
-            .iter()
-            .filter(|(_, e)| e.contains("+kind: "))
-            .map(|(k, _)| k.clone())
-            .sorted()
-            .collect();
-        kinds
+        Self::filter_kinds(results, |e| e.contains("+kind: "))
     }
 
     fn generate_pruned_kinds_markdown(results: &HashMap<String, String>) -> Vec<String> {
-        let kinds: Vec<String> = results
-            .iter()
-            .filter(|(_, e)| e.contains("-kind: ")) // like "-kind: Deployment"
-            .map(|(k, _)| k.clone())
-            .sorted()
-            .collect();
-        kinds
+        Self::filter_kinds(results, |e| e.contains("-kind: "))
     }
 
     fn generate_details_markdown(results: &HashMap<String, String>) -> String {
