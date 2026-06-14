@@ -46,7 +46,7 @@ impl Config {
     fn from_file(path: PathBuf) -> Result<Self> {
         info!("cli arguments are not set, use configuration file");
         let config_string = fs::read_to_string(path)?;
-        let config: Config = serde_yml::from_str(&config_string)?;
+        let config: Self = serde_yml::from_str(&config_string)?;
 
         Ok(config)
     }
@@ -56,9 +56,11 @@ impl Config {
         let ci = ci::CIKind::from_str(&env::var("KSNOTIFY_CI")?)?;
         let suppress_skaffold = env::var("KSNOTIFY_SUPPRESS_SKAFFOLD").is_ok();
         let suppress_argocd = env::var("KSNOTIFY_SUPPRESS_ARGOCD").is_ok();
-        let ignore_tag_images = env::var("KSNOTIFY_IGNORE_TAG_IMAGES")?
+        let ignore_tag_images = env::var("KSNOTIFY_IGNORE_TAG_IMAGES")
+            .unwrap_or_default()
             .split(',')
             .map(String::from)
+            .filter(|s| !s.is_empty())
             .collect();
         let patch = env::var("KSNOTIFY_PATCH").is_ok();
         Ok(Self {
@@ -161,6 +163,56 @@ patch: false
         assert!(config.suppress_argocd);
         assert_eq!(config.ignore_tag_images, vec!["image1", "image2"]);
         assert!(config.patch);
+    }
+
+    #[test]
+    fn test_new_from_env_without_ignore_tag_images() {
+        temp_env::with_vars(
+            [
+                ("KSNOTIFY_CI", Some("github")),
+                ("KSNOTIFY_IGNORE_TAG_IMAGES", None::<&str>),
+            ],
+            || {
+                let config = Config::new(&Cli {
+                    ci: None,
+                    target: None,
+                    suppress_skaffold: false,
+                    suppress_argocd: false,
+                    ignore_tag_images: vec![],
+                    patch: false,
+                    config: None,
+                    verbose: Verbosity::<ErrorLevel>::default(),
+                })
+                .unwrap();
+
+                assert!(config.ignore_tag_images.is_empty());
+            },
+        );
+    }
+
+    #[test]
+    fn test_new_from_env_with_empty_ignore_tag_images() {
+        temp_env::with_vars(
+            [
+                ("KSNOTIFY_CI", Some("github")),
+                ("KSNOTIFY_IGNORE_TAG_IMAGES", Some("")),
+            ],
+            || {
+                let config = Config::new(&Cli {
+                    ci: None,
+                    target: None,
+                    suppress_skaffold: false,
+                    suppress_argocd: false,
+                    ignore_tag_images: vec![],
+                    patch: false,
+                    config: None,
+                    verbose: Verbosity::<ErrorLevel>::default(),
+                })
+                .unwrap();
+
+                assert!(config.ignore_tag_images.is_empty());
+            },
+        );
     }
 
     #[test]

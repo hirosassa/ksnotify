@@ -1,4 +1,3 @@
-#![allow(clippy::use_self)]
 mod ci;
 mod config;
 mod parser;

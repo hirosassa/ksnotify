@@ -56,9 +56,9 @@ impl DiffParser {
     }
 
     fn parse_diff(&self, diff: &str) -> Vec<String> {
-        let temp = self.header.replace_all(diff, "DELIMITER").to_string();
-        temp.split("DELIMITER")
-            .filter(|&x| !x.trim().is_empty())
+        self.header
+            .split(diff)
+            .filter(|x| !x.trim().is_empty())
             .map(|x| x.trim().to_string())
             .collect()
     }
@@ -122,17 +122,16 @@ impl DiffParser {
 
     fn remove_image_tags(&self, diff: &str, image_name: &str) -> String {
         let escaped_image_name = regex::escape(image_name);
-        let regexp = Regex::new(
-            format!(
-                r"- *image: {escaped_image_name}(:.*)?\n\+ *image: {escaped_image_name}(:.*)?(?:\n|$)"
-            )
-            .as_str(),
+        let pattern = format!(
+            r"- *image: {escaped_image_name}(:.*)?\n\+ *image: {escaped_image_name}(:.*)?(?:\n|$)"
         );
-        if let Err(e) = regexp {
-            eprintln!("Failed to create regex: {e:?}");
-            return diff.to_string();
+        match Regex::new(&pattern) {
+            Ok(re) => re.replace_all(diff, "").to_string(),
+            Err(e) => {
+                eprintln!("Failed to create regex: {e:?}");
+                diff.to_string()
+            }
         }
-        regexp.unwrap().replace_all(diff, "").to_string()
     }
 
     fn is_there_any_diff(&self, body: &str) -> bool {
@@ -602,6 +601,22 @@ hij";
         let parser = DiffParser::new(false, false, vec!["myapp".to_string()]).unwrap();
         let actual = parser.parse(diff).unwrap();
         assert!(actual.kind_result.is_empty());
+    }
+
+    #[test]
+    fn test_parse_diff_containing_delimiter_string() {
+        let diff = "diff -u -N /tmp/v1.Service.test.app /tmp/v1.Service.test.app
+--- /tmp/v1.Service.test.app	2022-02-22 22:00:00.000000000 +0900
++++ /tmp/v1.Service.test.app	2022-02-22 22:00:00.000000000 +0900
+- name: DELIMITER
++ name: DELIMITER_NEW";
+        let parser = DiffParser::new(false, false, Vec::new()).unwrap();
+        let actual = parser.parse(diff).unwrap();
+        assert_eq!(actual.kind_result.len(), 1);
+        assert_eq!(
+            actual.kind_result["v1.Service.test.app"],
+            "- name: DELIMITER\n+ name: DELIMITER_NEW"
+        );
     }
 
     #[test]
