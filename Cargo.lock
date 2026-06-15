@@ -1404,6 +1404,7 @@ dependencies = [
  "log",
  "octocrab",
  "regex",
+ "rustls",
  "serde",
  "serde_json",
  "serde_yml",
