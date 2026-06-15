@@ -56,6 +56,13 @@ pub struct Cli {
 }
 
 fn main() {
+    // rustls 0.23 pulls in both `aws-lc-rs` and `ring` crypto providers through our
+    // dependency tree, so it cannot pick a process-level default on its own and panics
+    // on the first TLS handshake. Install one explicitly before any HTTPS request.
+    rustls::crypto::aws_lc_rs::default_provider()
+        .install_default()
+        .expect("failed to install rustls aws-lc-rs CryptoProvider");
+
     if let Err(err) = run() {
         error!("Error: {err:#?}");
         process::exit(1);

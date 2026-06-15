@@ -22,6 +22,7 @@ clap-verbosity-flag = "3"
 log = "0.4"
 env_logger = "0.11.10"
 octocrab = "0.53.0"
+rustls = { version = "0.23", features = ["aws_lc_rs"] }
 tokio = { version = "1.52.3", features = ["rt-multi-thread"] }
 
 [dev-dependencies]
