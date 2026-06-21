@@ -16,7 +16,7 @@ anyhow = "1.0.43"
 strum = "0.28"
 strum_macros = "0.28"
 regex = "1"
-itertools = "0.14.0"
+itertools = "0.15.0"
 clap = { version = "4.6.1", features = ["derive"] }
 clap-verbosity-flag = "3"
 log = "0.4"
