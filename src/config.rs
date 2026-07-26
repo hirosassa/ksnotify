@@ -166,6 +166,34 @@ patch: false
     }
 
     #[test]
+    fn test_new_from_env_suppress_argocd_is_independent_of_skaffold() {
+        // Set only SUPPRESS_ARGOCD to ensure the two flags are not swapped or conflated.
+        temp_env::with_vars(
+            [
+                ("KSNOTIFY_CI", Some("github")),
+                ("KSNOTIFY_SUPPRESS_ARGOCD", Some("true")),
+                ("KSNOTIFY_SUPPRESS_SKAFFOLD", None::<&str>),
+            ],
+            || {
+                let config = Config::new(&Cli {
+                    ci: None,
+                    target: None,
+                    suppress_skaffold: false,
+                    suppress_argocd: false,
+                    ignore_tag_images: vec![],
+                    patch: false,
+                    config: None,
+                    verbose: Verbosity::<ErrorLevel>::default(),
+                })
+                .unwrap();
+
+                assert!(config.suppress_argocd);
+                assert!(!config.suppress_skaffold);
+            },
+        );
+    }
+
+    #[test]
     fn test_new_from_env_without_ignore_tag_images() {
         temp_env::with_vars(
             [
@@ -213,6 +241,59 @@ patch: false
                 assert!(config.ignore_tag_images.is_empty());
             },
         );
+    }
+
+    #[test]
+    fn test_new_with_invalid_ci_arg_returns_error() {
+        let result = Config::new(&Cli {
+            ci: Some("invalid-ci".to_string()),
+            target: None,
+            suppress_skaffold: false,
+            suppress_argocd: false,
+            ignore_tag_images: vec![],
+            patch: false,
+            config: None,
+            verbose: Verbosity::<ErrorLevel>::default(),
+        });
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_from_file_missing_file_returns_error() {
+        let temp_dir = tempfile::TempDir::new().unwrap();
+        let missing_path = temp_dir.path().join("does-not-exist.yaml");
+
+        let result = Config::new(&Cli {
+            ci: None,
+            target: None,
+            suppress_skaffold: false,
+            suppress_argocd: false,
+            ignore_tag_images: vec![],
+            patch: false,
+            config: Some(missing_path),
+            verbose: Verbosity::<ErrorLevel>::default(),
+        });
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_from_file_invalid_yaml_returns_error() {
+        let temp_dir = tempfile::TempDir::new().unwrap();
+        let config_path = temp_dir.path().join("config.yaml");
+        // valid YAML syntax but missing required fields / wrong shape for Config
+        fs::write(&config_path, "not: a valid config\n").unwrap();
+
+        let result = Config::new(&Cli {
+            ci: None,
+            target: None,
+            suppress_skaffold: false,
+            suppress_argocd: false,
+            ignore_tag_images: vec![],
+            patch: false,
+            config: Some(config_path),
+            verbose: Verbosity::<ErrorLevel>::default(),
+        });
+        assert!(result.is_err());
     }
 
     #[test]

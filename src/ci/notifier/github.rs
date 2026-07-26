@@ -72,8 +72,10 @@ impl GithubNotifier {
     fn get_repository() -> Result<(String, String)> {
         // GITHUB_REPOSITORY is like <owner>/<repo>
         let env = env::var("GITHUB_REPOSITORY").context("GITHUB_REPOSITORY must be set")?;
-        let parts = env.split('/').collect::<Vec<&str>>();
-        Ok((parts[0].to_string(), parts[1].to_string()))
+        let (owner, repo) = env
+            .split_once('/')
+            .context("GITHUB_REPOSITORY must be in <owner>/<repo> format")?;
+        Ok((owner.to_string(), repo.to_string()))
     }
 
     #[allow(clippy::collapsible_if)]
@@ -182,6 +184,20 @@ mod tests {
     }
 
     #[test]
+    fn test_get_repository_without_slash_returns_error() {
+        temp_env::with_var("GITHUB_REPOSITORY", Some("repo-without-owner"), || {
+            let result = GithubNotifier::get_repository();
+            assert!(result.is_err());
+            assert!(
+                result
+                    .unwrap_err()
+                    .to_string()
+                    .contains("GITHUB_REPOSITORY must be in <owner>/<repo> format")
+            );
+        });
+    }
+
+    #[test]
     fn test_get_job_url() {
         temp_env::with_vars(
             [
@@ -221,6 +237,42 @@ mod tests {
                 let pull_request = GithubNotifier::get_pull_request().unwrap();
                 assert_eq!(pull_request.number, None);
                 assert_eq!(pull_request.commit_sha, "abc123");
+            },
+        );
+    }
+
+    #[test]
+    fn test_get_pull_request_with_non_numeric_number_returns_error() {
+        temp_env::with_vars(
+            [
+                ("GITHUB_REF_NAME", Some("not-a-number/merge")),
+                ("GITHUB_SHA", Some("abc123")),
+            ],
+            || {
+                let result = GithubNotifier::get_pull_request();
+                assert!(result.is_err());
+                // parse::<u64> failure is surfaced as an "invalid digit" ParseIntError
+                assert!(result.unwrap_err().to_string().contains("invalid digit"));
+            },
+        );
+    }
+
+    #[test]
+    fn test_get_pull_request_missing_sha_returns_error() {
+        temp_env::with_vars(
+            [
+                ("GITHUB_REF_NAME", Some("123/merge")),
+                ("GITHUB_SHA", None::<&str>),
+            ],
+            || {
+                let result = GithubNotifier::get_pull_request();
+                assert!(result.is_err());
+                assert!(
+                    result
+                        .unwrap_err()
+                        .to_string()
+                        .contains("GITHUB_SHA must be set")
+                );
             },
         );
     }
