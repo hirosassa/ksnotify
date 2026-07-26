@@ -220,6 +220,35 @@ mod tests {
     }
 
     #[test]
+    fn test_get_merge_request_with_non_numeric_iid_returns_error() {
+        temp_env::with_vars(
+            [
+                ("CI_MERGE_REQUEST_IID", Some("not-a-number")),
+                ("CI_COMMIT_SHA", Some("abcdefg")),
+            ],
+            || {
+                let result = GitlabNotifier::get_merge_request();
+                assert!(result.is_err());
+                assert!(result.unwrap_err().to_string().contains("invalid digit"));
+            },
+        );
+    }
+
+    #[test]
+    fn test_get_merge_request_missing_commit_sha_returns_error() {
+        temp_env::with_vars(
+            [
+                ("CI_MERGE_REQUEST_IID", Some("123")),
+                ("CI_COMMIT_SHA", None::<&str>),
+            ],
+            || {
+                let result = GitlabNotifier::get_merge_request();
+                assert!(result.is_err());
+            },
+        );
+    }
+
+    #[test]
     fn test_get_base_url() {
         temp_env::with_var("CI_SERVER_HOST", Some("gitlab.example.com"), || {
             let base_url = GitlabNotifier::get_base_url().unwrap();
