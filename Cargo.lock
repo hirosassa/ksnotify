@@ -850,9 +850,9 @@ checksum = "e629b9b98ef3dd8afe6ca2bd0f89306cec16d43d907889945bc5d6687f2f13c7"
 
 [[package]]
 name = "gitlab"
-version = "0.1902.0"
+version = "0.1903.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "39fb5c8eff998368f78fb44336cd87b518d6c0610e84e70ab3889f821d62f5af"
+checksum = "f36c0c78862c1d2388faea6bccea9b0d843407b14f25e751b1c59b2b2c8491fa"
 dependencies = [
  "async-trait",
  "backtrace",
@@ -864,6 +864,7 @@ dependencies = [
  "futures-util",
  "graphql_client",
  "http",
+ "http-link",
  "itertools 0.14.0",
  "log",
  "percent-encoding",
@@ -1027,6 +1028,16 @@ dependencies = [
  "http",
  "http-body",
  "pin-project-lite",
+]
+
+[[package]]
+name = "http-link"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "500f1fc191bab8d956904c49818a167fd19534dbd529d93bd030bdc3bf9117a0"
+dependencies = [
+ "percent-encoding",
+ "url",
 ]
 
 [[package]]
