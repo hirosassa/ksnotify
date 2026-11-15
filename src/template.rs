@@ -94,11 +94,7 @@ No changes. Kubernetes configurations are up-to-date.
         let j = serde_json::to_value(self)?;
         let current_title = reg.render_template(Self::DEFAULT_BUILD_TITLE_TEMPLATE, &j)?;
 
-        if current_title == old_title {
-            return Ok(true);
-        }
-
-        Ok(false)
+        Ok(current_title == old_title)
     }
 
     fn filter_kinds(
